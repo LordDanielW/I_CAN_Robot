@@ -138,7 +138,7 @@ chmod +x /tmp/fake_speech.sh
 
 ```bash
 # 1. Activate environment
-source ~/ros2_mcp_env/bin/activate
+source ~/ros2_dev_env/bin/activate
 
 # 2. Source workspace
 cd ~/ros2_ws

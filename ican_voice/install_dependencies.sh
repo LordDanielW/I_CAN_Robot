@@ -23,7 +23,7 @@ if [[ -z "${VIRTUAL_ENV}" ]]; then
     echo ""
     echo "WARNING: No virtual environment detected!"
     echo "It's recommended to activate your venv first:"
-    echo "  source ~/ros2_mcp_env/bin/activate"
+    echo "  source ~/ros2_dev_env/bin/activate"
     echo ""
     read -p "Continue anyway? (y/n) " -n 1 -r
     echo
