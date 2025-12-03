@@ -24,7 +24,7 @@ sudo apt-get install -y portaudio19-dev python3-pyaudio
 Make sure your virtual environment is activated:
 
 ```bash
-source ~/ros2_mcp_env/bin/activate
+source ~/ros2_dev_env/bin/activate
 ```
 
 Install the required Python packages:
