@@ -21,7 +21,7 @@ setup(
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*')),
         (os.path.join('share', package_name, 'meshes'), glob('meshes/*')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'vosk', 'pyttsx3', 'pyaudio'],
     zip_safe=True,
     maintainer='fire',
     maintainer_email='user@todo.todo',
@@ -31,6 +31,8 @@ setup(
     entry_points={
         'console_scripts': [
             'voice_node = ican_voice.voice_node:main',
+            'vosk_node = ican_voice.vosk_node:main',
+            'tts_node = ican_voice.tts_node:main',
         ],
     },
 )

@@ -21,7 +21,7 @@ setup(
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*')),
         (os.path.join('share', package_name, 'meshes'), glob('meshes/*')),
     ],
-    install_requires=['setuptools'],
+    install_requires=['setuptools', 'ollama'],
     zip_safe=True,
     maintainer='fire',
     maintainer_email='user@todo.todo',
@@ -31,6 +31,8 @@ setup(
     entry_points={
         'console_scripts': [
             'brain_node = ican_orchestrator.brain_node:main',
+            'ollama_node = ican_orchestrator.ollama_node:main',
+            'ollama_chat = ican_orchestrator.ollama_chat:main',
         ],
     },
 )

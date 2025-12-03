@@ -1,0 +1,15 @@
+package.xml
+setup.cfg
+setup.py
+ican_orchestrator/__init__.py
+ican_orchestrator/brain_node.py
+ican_orchestrator/ollama_node.py
+ican_orchestrator/ollama_query.py
+ican_orchestrator.egg-info/PKG-INFO
+ican_orchestrator.egg-info/SOURCES.txt
+ican_orchestrator.egg-info/dependency_links.txt
+ican_orchestrator.egg-info/entry_points.txt
+ican_orchestrator.egg-info/requires.txt
+ican_orchestrator.egg-info/top_level.txt
+ican_orchestrator.egg-info/zip-safe
+resource/ican_orchestrator
