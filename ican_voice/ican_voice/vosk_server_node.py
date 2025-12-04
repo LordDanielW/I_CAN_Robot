@@ -1,21 +1,26 @@
-import os
-import json
-import pyaudio
-import urllib.request
-import zipfile
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
+from std_msgs.msg import UInt8MultiArray, String
+import os
+import json
+import urllib.request
+import zipfile
 from vosk import Model, KaldiRecognizer
 
-class VoskNode(Node):
+class VoskServer(Node):
     def __init__(self):
-        super().__init__('vosk_node')
+        super().__init__('vosk_server')
+        
+        # Subscribe to audio, Publish text
+        self.subscription = self.create_subscription(
+            UInt8MultiArray, 
+            'audio_stream', 
+            self.audio_callback, 
+            10)
         self.publisher_ = self.create_publisher(String, 'speech_text', 10)
-        
-        # Path to your model folder
+
+        # Initialize Vosk
         model_path = os.path.expanduser("~/vosk-model")
-        
         if not os.path.exists(model_path):
             self.get_logger().warn(f"Model not found at {model_path}")
             self.get_logger().info("Downloading Vosk model...")
@@ -23,9 +28,10 @@ class VoskNode(Node):
                 self.get_logger().error("Failed to download model")
                 return
 
-        self.get_logger().info("Loading Vosk Model...")
+        self.get_logger().info("Loading Vosk Model (Server Mode)...")
         self.model = Model(model_path)
         self.recognizer = KaldiRecognizer(self.model, 16000)
+        self.get_logger().info("Ready. Waiting for audio stream...")
     
     def download_vosk_model(self):
         """Download and extract Vosk model if not present"""
@@ -56,37 +62,29 @@ class VoskNode(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to download model: {e}")
             return False
-        
-        # Audio setup
-        self.p = pyaudio.PyAudio()
-        self.stream = self.p.open(format=pyaudio.paInt16, channels=1, rate=16000, input=True, frames_per_buffer=8000)
-        self.stream.start_stream()
-        
-        self.timer = self.create_timer(0.01, self.listen_callback)
-        self.get_logger().info("Vosk listening... (Offline)")
 
-    def listen_callback(self):
-        # Read data from microphone
-        data = self.stream.read(4000, exception_on_overflow=False)
+    def audio_callback(self, msg):
+        # Convert list of ints back to raw bytes
+        audio_data = bytes(msg.data)
         
-        if self.recognizer.AcceptWaveform(data):
+        # Feed to Vosk
+        if self.recognizer.AcceptWaveform(audio_data):
             result_json = self.recognizer.Result()
             result_dict = json.loads(result_json)
             text = result_dict.get('text', '')
             
             if text:
-                msg = String()
-                msg.data = text
-                self.publisher_.publish(msg)
-                self.get_logger().info(f"Detected: {text}")
+                self.get_logger().info(f"Recognized: {text}")
+                pub_msg = String()
+                pub_msg.data = text
+                self.publisher_.publish(pub_msg)
 
 def main(args=None):
     rclpy.init(args=args)
-    node = VoskNode()
-    try:
-        rclpy.spin(node)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        node.destroy_node()
-        rclpy.shutdown()
+    node = VoskServer()
+    rclpy.spin(node)
+    node.destroy_node()
+    rclpy.shutdown()
+
+if __name__ == '__main__':
+    main()
