@@ -33,6 +33,7 @@ setup(
             'brain_node = ican_orchestrator.brain_node:main',
             'ollama_node = ican_orchestrator.ollama_node:main',
             'ollama_chat = ican_orchestrator.ollama_chat:main',
+            'ollama_mcp_chat = ican_orchestrator.ollama_mcp_chat:main',
         ],
     },
 )

@@ -12,7 +12,10 @@ sudo apt install -y python3-pip python3-dev portaudio19-dev python3-pyaudio espe
 # ====================================
 # 2. INSTALL PYTHON PACKAGES
 # ====================================
-/usr/bin/python3 -m pip install --user ollama vosk pyttsx3 pyaudio SpeechRecognition faster-whisper
+/usr/bin/python3 -m pip install --user ollama vosk pyttsx3 pyaudio SpeechRecognition faster-whisper ultralytics opencv-python
+
+# IMPORTANT: Remove user numpy if it was installed (causes conflicts with cv_bridge)
+rm -rf ~/.local/lib/python3.12/site-packages/numpy*
 
 # ====================================
 # 3. INSTALL AND SETUP OLLAMA
@@ -61,8 +64,14 @@ cd ~/ros2_ws/src/I_CAN_Robot/ican_voice/ican_voice
 python3 test_tts.py
 
 echo "Testing Vosk..."
-cd ~/ros2_ws/src/I_CAN_Robot/ican_voice/ican_voice
 python3 test_vosk.py
+
+echo "Testing Whisper..."
+python3 test_whisper.py
+
+echo "Testing YOLO..."
+cd ~/ros2_ws/src/I_CAN_Robot/ican_see/ican_see
+python3 test_yolo.py
 
 # ====================================
 # 8. DONE! NOW RUN YOUR NODES
@@ -70,8 +79,14 @@ python3 test_vosk.py
 echo "Setup complete! You can now run:"
 echo "  ros2 run ican_orchestrator ollama_node"
 echo "  ros2 run ican_voice vosk_node"
+echo "  ros2 run ican_voice vosk_server_node"
+echo "  ros2 run ican_voice whisper_server_node"
 echo "  ros2 run ican_voice tts_node"
 echo "  ros2 run ican_orchestrator ollama_chat"
+echo "  ros2 run ican_see yolo_server_node"
+echo ""
+echo "Test vision with camera:"
+echo "  ros2 launch ican_bringup local_nodes.launch.py"
 ```
 
 ## Manual Testing Commands

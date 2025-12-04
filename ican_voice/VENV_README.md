@@ -60,7 +60,11 @@ sudo apt install python3-pyaudio espeak espeak-ng libespeak-dev
 ### Install Python Packages
 ```bash
 # Install required packages to system Python
-/usr/bin/python3 -m pip install --user ollama vosk pyttsx3 pyaudio SpeechRecognition
+/usr/bin/python3 -m pip install --user ollama vosk pyttsx3 pyaudio SpeechRecognition faster-whisper ultralytics opencv-python
+
+# IMPORTANT: Remove user-installed numpy (it conflicts with ROS2 cv_bridge)
+# The system numpy 1.26.4 works with all packages
+rm -rf ~/.local/lib/python3.12/site-packages/numpy*
 ```
 
 ### Clone and Build Workspace
@@ -118,6 +122,18 @@ cd ~/ros2_ws/src/I_CAN_Robot/ican_voice/ican_voice
 python3 test_tts.py
 ```
 
+### Test Whisper
+```bash
+cd ~/ros2_ws/src/I_CAN_Robot/ican_voice/ican_voice
+python3 test_whisper.py
+```
+
+### Test YOLO
+```bash
+cd ~/ros2_ws/src/I_CAN_Robot/ican_see/ican_see
+python3 test_yolo.py
+```
+
 ## Running the Full System
 
 ### Terminal 1: Ollama Node
@@ -129,7 +145,10 @@ ros2 run ican_orchestrator ollama_node
 ### Terminal 2: Voice Recognition Node
 ```bash
 source ~/ros2_ws/install/setup.bash
-ros2 run ican_voice vosk_node
+# Choose one:
+ros2 run ican_voice vosk_node          # Vosk with direct microphone
+ros2 run ican_voice vosk_server_node   # Vosk with audio stream
+ros2 run ican_voice whisper_server_node # Whisper with audio stream
 ```
 
 ### Terminal 3: Text-to-Speech Node

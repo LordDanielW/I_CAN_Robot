@@ -26,6 +26,7 @@ setup(
         'console_scripts': [
             'behavior_server = ican_mcp_server.behavior_server:main',
             'senses_server = ican_mcp_server.senses_server:main',
+            'dice_mcp_node = ican_mcp_server.dice_mcp_node:main',
         ],
     },
 )

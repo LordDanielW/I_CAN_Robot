@@ -19,9 +19,9 @@ def test_vosk():
         print(f"\n✗ Vosk model not found at {model_path}")
         print("\nDownload a model:")
         print("  cd ~")
-        print("  wget https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip")
-        print("  unzip vosk-model-small-en-us-0.15.zip")
-        print("  mv vosk-model-small-en-us-0.15 vosk-model")
+        print("  wget https://alphacephei.com/vosk/models/vosk-model-en-us-0.42-gigaspeech.zip")
+        print("  unzip vosk-model-en-us-0.42-gigaspeech.zip")
+        print("  mv vosk-model-en-us-0.42-gigaspeech vosk-model")
         return False
     
     try:

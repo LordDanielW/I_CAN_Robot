@@ -21,7 +21,7 @@ setup(
         (os.path.join('share', package_name, 'worlds'), glob('worlds/*')),
         (os.path.join('share', package_name, 'meshes'), glob('meshes/*')),
     ],
-    install_requires=['setuptools', 'vosk', 'pyttsx3', 'pyaudio'],
+    install_requires=['setuptools', 'vosk', 'pyttsx3', 'pyaudio', 'faster-whisper'],
     zip_safe=True,
     maintainer='fire',
     maintainer_email='user@todo.todo',
@@ -30,7 +30,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'voice_node = ican_voice.voice_node:main',
+            'whisper_server_node = ican_voice.whisper_server_node:main',
             'vosk_node = ican_voice.vosk_node:main',
             'vosk_server_node = ican_voice.vosk_server_node:main',
             'audio_streamer_node = ican_voice.audio_streamer_node:main',
