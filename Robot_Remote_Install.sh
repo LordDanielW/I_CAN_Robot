@@ -110,6 +110,16 @@ echo "Installing Python dependencies (mcp, openai)..."
 sudo -u $REAL_USER $VENV_PATH/bin/pip install --upgrade pip
 sudo -u $REAL_USER $VENV_PATH/bin/pip install mcp openai
 
+
+# #################################
+# Whisper Install
+# #################################
+
+# (OpenAI Speech to Text)
+echo "Installing Faster Whisper..."
+sudo apt-get install -y portaudio19-dev python3-pyaudio
+/usr/bin/python3 -m pip install --break-system-packages pyaudio faster-whisper
+
 # #################################
 # Ollama & Qwen 2.5 Install
 # #################################

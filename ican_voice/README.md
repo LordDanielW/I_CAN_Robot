@@ -1,155 +1,196 @@
-# ican_voice - The Ears 🎤
+# ican_voice - Speech Recognition & Text-to-Speech
 
-This package provides speech-to-text capabilities for the I_CAN Robot using faster-whisper.
+Voice input and output capabilities for the I_CAN Robot using OpenAI Whisper and pyttsx3.
 
-## Features
+## Architecture
 
-- **Real-time audio capture** using PyAudio
-- **GPU-accelerated transcription** with faster-whisper
-- **Threaded architecture** - audio processing doesn't block ROS 2
-- **Voice Activity Detection (VAD)** - only transcribes when you speak
-- **Configurable parameters** - adjust model size, thresholds, etc.
+```
+┌─────────────────────────────────────────────────────────────┐
+│                     ican_voice Package                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  ┌──────────────────┐         ┌──────────────────┐         │
+│  │ Audio Streamer   │────────>│ Whisper Server   │         │
+│  │   (microphone)   │ /audio  │ (speech-to-text) │         │
+│  │                  │ _stream │                  │         │
+│  └──────────────────┘         └─────────┬────────┘         │
+│                                          │                  │
+│                                          v                  │
+│                                    /speech_text             │
+│                                          │                  │
+│                                          v                  │
+│                                 ┌────────────────┐          │
+│           /robot_speech ───────>│   TTS Node     │          │
+│                                 │  (pyttsx3)     │          │
+│                                 └────────────────┘          │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Nodes
+
+### 1. audio_streamer_node
+- **Purpose**: Captures microphone audio and publishes raw audio stream
+- **Publishes**: `/audio_stream` (UInt8MultiArray) - Raw PCM audio bytes
+- **Use**: Run on robot or local machine with microphone
+
+### 2. whisper_server_node
+- **Purpose**: Transcribes audio stream to text using OpenAI Whisper
+- **Subscribes**: `/audio_stream` (UInt8MultiArray)
+- **Publishes**: `/speech_text` (String) - Transcribed speech
+- **Parameters**:
+  - `model_size`: tiny.en, base.en, small.en, medium.en (default: base.en)
+  - `device`: cpu or cuda (default: cpu)
+  - `compute_type`: int8, float16, float32 (default: int8)
+
+### 3. tts_node
+- **Purpose**: Speaks text aloud using pyttsx3 text-to-speech
+- **Subscribes**: `/robot_speech` (String)
+- **Use**: Robot verbal responses
+
+## Quick Start
+
+### Run Complete Voice System
+```bash
+# Terminal 1: Audio capture (on robot/local machine)
+ros2 run ican_voice audio_streamer_node
+
+# Terminal 2: Speech recognition (can run remotely)
+ros2 run ican_voice whisper_server_node
+
+# Terminal 3: Text-to-speech output
+ros2 run ican_voice tts_node
+
+# Terminal 4: Monitor recognized speech
+ros2 topic echo /speech_text
+```
+
+### Test Without Microphone
+```bash
+# Simulate speech input
+ros2 topic pub /speech_text std_msgs/String "data: 'Hello robot'" --once
+
+# Test TTS output
+ros2 topic pub /robot_speech std_msgs/String "data: 'I am ready'" --once
+```
 
 ## Installation
 
-### 1. System Dependencies (PortAudio for PyAudio)
+See [Robot_Remote_Install.sh](../Robot_Remote_Install.sh) for full installation script.
 
+### System Dependencies
 ```bash
-sudo apt-get update
-sudo apt-get install -y portaudio19-dev python3-pyaudio
+sudo apt install -y portaudio19-dev python3-pyaudio espeak espeak-ng libespeak-dev
 ```
 
-### 2. Python Dependencies (in your venv)
-
-Make sure your virtual environment is activated:
-
+### Python Packages (System Python)
 ```bash
-source ~/ros2_dev_env/bin/activate
+# Important: Install to system Python for ROS2 compatibility
+/usr/bin/python3 -m pip install --break-system-packages \
+    pyaudio faster-whisper pyttsx3
 ```
 
-Install the required Python packages:
+**Critical**: See [VENV_README.md](VENV_README.md) for why we use system Python with ROS2.
 
+## Testing
+
+### Test Whisper (No ROS)
 ```bash
-pip install pyaudio numpy faster-whisper
+cd ~/ros2_ws/src/I_CAN_Robot/ican_voice/ican_voice
+python3 test_whisper.py
+# Records 5 seconds, transcribes with Whisper
 ```
 
-### 3. Build the Package
-
+### Test TTS (No ROS)
 ```bash
-cd ~/ros2_ws
-colcon build --packages-select ican_voice
-source install/setup.bash
+python3 test_tts.py
+# Speaks test message
 ```
 
-## Usage
+## Parameters Reference
 
-### Basic Launch
+### whisper_server_node
+| Parameter | Default | Options | Description |
+|-----------|---------|---------|-------------|
+| model_size | base.en | tiny.en, base.en, small.en, medium.en | Model size vs accuracy tradeoff |
+| device | cpu | cpu, cuda | Compute device |
+| compute_type | int8 | int8, float16, float32 | Precision (int8 fastest) |
 
+### Example with parameters
 ```bash
-ros2 launch ican_voice voice_node.launch.py
+ros2 run ican_voice whisper_server_node --ros-args \
+  -p model_size:=tiny.en \
+  -p device:=cpu \
+  -p compute_type:=int8
 ```
-
-### With Custom Parameters
-
-```bash
-# Use a smaller/faster model
-ros2 launch ican_voice voice_node.launch.py model_size:=tiny.en
-
-# Force CPU usage
-ros2 launch ican_voice voice_node.launch.py device:=cpu
-
-# Adjust sensitivity (lower = more sensitive)
-ros2 launch ican_voice voice_node.launch.py energy_threshold:=300.0
-```
-
-### Run Without Launch File
-
-```bash
-ros2 run ican_voice voice_node
-```
-
-## Testing the Node
-
-In another terminal, listen to the published speech:
-
-```bash
-ros2 topic echo /human/speech
-```
-
-Speak into your microphone - you should see your words appear on the topic!
-
-## Parameters
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `model_size` | `base.en` | Whisper model: tiny.en, base.en, small.en, medium.en, large-v2 |
-| `device` | `auto` | Compute device: auto, cuda, or cpu |
-| `compute_type` | `int8` | Precision: int8 (fastest), float16, float32 (most accurate) |
-| `mic_device_index` | `-1` | Microphone device (-1 for default) |
-| `sample_rate` | `16000` | Audio sample rate in Hz |
-| `energy_threshold` | `500.0` | RMS energy threshold for speech detection |
-| `silence_duration` | `1.5` | Seconds of silence to end a phrase |
-| `min_phrase_duration` | `0.5` | Minimum phrase length in seconds |
 
 ## Topics
 
-### Published
+| Topic | Type | Direction | Description |
+|-------|------|-----------|-------------|
+| `/audio_stream` | UInt8MultiArray | Published | Raw PCM audio (16kHz, mono, 16-bit) |
+| `/speech_text` | String | Published | Transcribed speech from Whisper |
+| `/robot_speech` | String | Subscribed | Text for robot to speak |
 
-- `/human/speech` (`std_msgs/String`) - Transcribed speech text
+## Integration Example
+
+Voice-controlled robot with wake word detection:
+
+```bash
+# Full system with prompt node and LLM
+ros2 launch ican_bringup remote_nodes.launch.py
+```
+
+This launches:
+1. whisper_server_node - Speech recognition
+2. prompt_node - Wake word detection ("Hey Spot")
+3. ollama_tool_node - LLM brain
+4. tool_manager_node - Tool orchestration
+5. dice_service_node - Example tool
+
+## Performance Notes
+
+- **tiny.en**: Fastest, good for real-time on CPU
+- **base.en**: Balanced speed/accuracy (recommended)
+- **small.en**: Better accuracy, slower
+- **medium.en**: Best accuracy, requires GPU
+
+Model downloads automatically on first run to `~/.cache/huggingface/hub/`.
 
 ## Troubleshooting
 
-### WSL2 Microphone Access
+### No audio devices (WSL2)
+WSL2 doesn't support audio natively. Options:
+1. Use PulseAudio forwarding from Windows
+2. Run audio_streamer_node on Windows, whisper on WSL2
+3. Use network ROS2 to bridge audio topics
 
-WSL2 doesn't natively support audio input. You have a few options:
+### Whisper model download slow
+First run only. Models cached locally. Use `tiny.en` for fastest download.
 
-1. **WSLg with PulseAudio** (recommended for WSL2)
-   ```bash
-   sudo apt-get install pulseaudio
-   pulseaudio --start
-   ```
+### TTS not working
+```bash
+# Install espeak
+sudo apt install espeak espeak-ng libespeak-dev
 
-2. **Use Windows microphone via PulseAudio network**
-   - Set up PulseAudio on Windows to accept network connections
-   - Configure WSL to connect to Windows PulseAudio server
-
-3. **Use a USB audio device**
-   - Attach USB microphone to WSL
-   - Check with: `lsusb`
-
-### List Available Microphones
-
-```python
-python3 -c "import pyaudio; pa = pyaudio.PyAudio(); [print(f'{i}: {pa.get_device_info_by_index(i)[\"name\"]}') for i in range(pa.get_device_count())]; pa.terminate()"
+# Test
+echo "hello" | espeak
 ```
 
-### Model Downloads
+### Module not found errors
+See [VENV_README.md](VENV_README.md) - packages must be in system Python, not venv.
 
-On first run, faster-whisper will download the model to `~/.cache/huggingface/`.
+## Files
 
-This may take a few minutes depending on model size:
-- tiny.en: ~75 MB
-- base.en: ~145 MB  
-- small.en: ~488 MB
-- medium.en: ~1.5 GB
+- `audio_streamer_node.py` - Microphone capture
+- `whisper_server_node.py` - Speech-to-text
+- `tts_node.py` - Text-to-speech
+- `test_whisper.py` - Standalone Whisper test
+- `test_tts.py` - Standalone TTS test
+- `VENV_README.md` - **Critical**: ROS2 + Python package setup guide
 
-### No Audio Detected
+## See Also
 
-If the node runs but doesn't detect speech:
-
-1. Check your microphone is working: `arecord -d 5 test.wav`
-2. Lower the `energy_threshold` parameter
-3. Verify PyAudio can access your mic (see "List Available Microphones" above)
-
-## Architecture Notes
-
-The voice node uses a **threaded design**:
-
-- **Main Thread**: Runs the ROS 2 node spin loop
-- **Audio Thread**: Continuously captures and processes audio
-
-This ensures the ROS 2 heartbeat/spin is never blocked by audio processing.
-
-## Next Steps
-
-Once the ears are working, you'll connect them to the brain (ican_orchestrator) which will process the speech and decide what to do.
+- [Voice Tool Calling Guide](../../VOICE_TOOL_CALLING_GUIDE.md) - Full system integration
+- [ican_orchestrator](../ican_orchestrator/) - LLM brain and prompt processing
+- [ican_mcp_server](../ican_mcp_server/) - Tool management system

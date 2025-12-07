@@ -31,8 +31,6 @@ setup(
     entry_points={
         'console_scripts': [
             'whisper_server_node = ican_voice.whisper_server_node:main',
-            'vosk_node = ican_voice.vosk_node:main',
-            'vosk_server_node = ican_voice.vosk_server_node:main',
             'audio_streamer_node = ican_voice.audio_streamer_node:main',
             'tts_node = ican_voice.tts_node:main',
         ],
