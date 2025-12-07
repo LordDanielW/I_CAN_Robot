@@ -32,8 +32,11 @@ setup(
         'console_scripts': [
             'brain_node = ican_orchestrator.brain_node:main',
             'ollama_node = ican_orchestrator.ollama_node:main',
+            'ollama_tool_node = ican_orchestrator.ollama_tool_node:main',
             'ollama_chat = ican_orchestrator.ollama_chat:main',
             'ollama_mcp_chat = ican_orchestrator.ollama_mcp_chat:main',
+            'prompt_node = ican_orchestrator.prompt_node:main',
+            'debug_monitor = ican_orchestrator.debug_monitor:main',
         ],
     },
 )
