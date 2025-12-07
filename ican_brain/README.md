@@ -218,16 +218,11 @@ Remote nodes includes:
 
 ## Dependencies
 
-```bash
-# Install Ollama
-curl -fsSL https://ollama.com/install.sh | sh
+See [main README](../README.md) for complete installation instructions.
 
-# Pull model
-ollama pull qwen2.5:7b
-
-# Python packages (system)
-/usr/bin/python3 -m pip install --break-system-packages ollama
-```
+**Required:**
+- Ollama with qwen2.5:7b model
+- Python: ollama library
 
 ## Troubleshooting
 

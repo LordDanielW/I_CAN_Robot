@@ -382,8 +382,8 @@ colcon build --packages-select ican_tools --symlink-install
 
 ## Resources
 
+- [Main README](../README.md) - Complete system overview and installation
 - **ROS2 Jazzy:** https://docs.ros.org/en/jazzy/
-- **I_CAN Robot:** Main repository documentation
 
 ---
 

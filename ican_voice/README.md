@@ -76,21 +76,12 @@ ros2 topic pub /robot_speech std_msgs/String "data: 'I am ready'" --once
 
 ## Installation
 
-See [Robot_Remote_Install.sh](../Robot_Remote_Install.sh) for full installation script.
+See [main README](../README.md) for complete system installation including:
+- System dependencies (portaudio, espeak)
+- Python packages (pyaudio, faster-whisper, pyttsx3)
+- ROS2 + Python environment setup
 
-### System Dependencies
-```bash
-sudo apt install -y portaudio19-dev python3-pyaudio espeak espeak-ng libespeak-dev
-```
-
-### Python Packages (System Python)
-```bash
-# Important: Install to system Python for ROS2 compatibility
-/usr/bin/python3 -m pip install --break-system-packages \
-    pyaudio faster-whisper pyttsx3
-```
-
-**Critical**: See [VENV_README.md](VENV_README.md) for why we use system Python with ROS2.
+**Critical:** Packages must be in system Python. See [VENV_README.md](VENV_README.md) for explanation.
 
 ## Testing
 
@@ -191,6 +182,6 @@ See [VENV_README.md](VENV_README.md) - packages must be in system Python, not ve
 
 ## See Also
 
-- [Voice Tool Calling Guide](../../VOICE_TOOL_CALLING_GUIDE.md) - Full system integration
+- [Main README](../README.md) - Complete system overview
 - [ican_brain](../ican_brain/) - LLM brain and prompt processing
 - [ican_tools](../ican_tools/) - Tool management system

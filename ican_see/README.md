@@ -39,36 +39,18 @@ ros2 run ican_see yolo_server_node
 
 ## Installation
 
-### Basic Dependencies (Required)
-```bash
-# Install Python packages (included in Robot_Remote_Install.sh)
-/usr/bin/python3 -m pip install --break-system-packages ultralytics opencv-python torch torchvision
-```
+See [main README](../README.md) for complete system installation.
 
-### YOLOv8 Setup (Default)
-No additional setup needed - models auto-download from Ultralytics on first use.
+### Package-Specific Setup
 
-### YOLOv13 Setup (Optional)
+**YOLOv8 (Default):** No additional setup - models auto-download
+
+**YOLOv13 (Optional):**
 ```bash
-# Clone YOLOv13 repository
 cd ~
 git clone https://github.com/iMoonLab/yolov13.git
-
-# Download pre-trained models
 cd yolov13
-# Download from: https://github.com/iMoonLab/yolov13/releases
 wget https://github.com/iMoonLab/yolov13/releases/download/v1.0/yolov13n.pt
-wget https://github.com/iMoonLab/yolov13/releases/download/v1.0/yolov13s.pt
-# ... other models as needed
-```
-
-### NumPy Compatibility (CRITICAL)
-```bash
-# Remove user-installed numpy 2.x (conflicts with cv_bridge)
-rm -rf ~/.local/lib/python3.12/site-packages/numpy*
-
-# Verify system numpy 1.26.4
-python3 -c "import numpy; print('NumPy:', numpy.__version__)"
 ```
 
 ## Available Models
