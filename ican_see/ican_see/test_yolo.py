@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 """
 YOLO Test Script (No ROS)
-Tests YOLOv8 (ultralytics) object detection on webcam or test image
-Note: YOLOv13 doesn't exist yet. Using YOLOv8 which is the latest stable version.
+Tests YOLOv8 or YOLOv13 object detection on webcam or test image
+
+Supports:
+- YOLOv8 (stable, default) - auto-downloads from Ultralytics
+- YOLOv13 (latest) - requires manual download from iMoonLab
+
+YOLOv13 features HyperACE and FullPAD for improved accuracy.
 """
 
 import cv2
@@ -13,13 +18,14 @@ def test_yolo_webcam():
     """Test YOLO with live webcam feed"""
     print("Testing YOLO with webcam...")
     
-    # Load YOLOv8 model
-    MODEL = "yolov8n.pt"  # nano model (fastest), can use: yolov8s, yolov8m, yolov8l, yolov8x
+    # Load YOLO model (change to yolov13n.pt for YOLOv13)
+    MODEL = "yolov8n.pt"  # yolov8: n/s/m/l/x, yolov13: n/s/m/l/x
     
     try:
-        print(f"\nLoading YOLO model: {MODEL}...")
+        version = 'YOLOv13' if 'v13' in MODEL else 'YOLOv8'
+        print(f"\nLoading {version} model: {MODEL}...")
         model = YOLO(MODEL)
-        print("Model loaded successfully!")
+        print(f"{version} model loaded successfully!")
         
         # Open webcam
         cap = cv2.VideoCapture(0)
@@ -71,7 +77,9 @@ def test_yolo_webcam():
         print("\nTroubleshooting:")
         print("  - Install ultralytics: pip install ultralytics")
         print("  - Install opencv: pip install opencv-python")
-        print("  - The model will download automatically on first run")
+        print("  - YOLOv8 models auto-download from Ultralytics")
+        print("  - For YOLOv13: git clone https://github.com/iMoonLab/yolov13.git")
+        print("  - YOLOv13 models: https://github.com/iMoonLab/yolov13/releases")
         return False
 
 def test_yolo_image(model=None):
@@ -81,7 +89,8 @@ def test_yolo_image(model=None):
     try:
         if model is None:
             MODEL = "yolov8n.pt"
-            print(f"Loading YOLO model: {MODEL}...")
+            version = 'YOLOv8'
+            print(f"Loading {version} model: {MODEL}...")
             model = YOLO(MODEL)
         
         # Create a test image or use a URL
@@ -121,14 +130,18 @@ def test_yolo_image(model=None):
 
 def print_yolo_info():
     """Print information about available YOLO models"""
-    print("\nAvailable YOLOv8 Models:")
-    print("  yolov8n.pt - Nano (fastest, least accurate)")
-    print("  yolov8s.pt - Small")
-    print("  yolov8m.pt - Medium")
-    print("  yolov8l.pt - Large")
-    print("  yolov8x.pt - Extra Large (slowest, most accurate)")
-    print("\nNote: Models will be downloaded automatically on first use")
-    print("      YOLOv13 doesn't exist yet. YOLOv8 is the latest stable version.")
+    print("\nAvailable YOLOv8 Models (Stable, Auto-Download):")
+    print("  yolov8n.pt - Nano (fastest, ~6MB)")
+    print("  yolov8s.pt - Small (~22MB)")
+    print("  yolov8m.pt - Medium (~52MB)")
+    print("  yolov8l.pt - Large (~87MB)")
+    print("  yolov8x.pt - Extra Large (slowest, most accurate, ~136MB)")
+    print("\nAvailable YOLOv13 Models (Latest, Manual Download):")
+    print("  yolov13n.pt - Nano (+3.0% mAP over YOLO11-N)")
+    print("  yolov13s/m/l/x.pt - Small/Medium/Large/Extra Large")
+    print("  Features: HyperACE, FullPAD (June 2025, iMoonLab/Tsinghua)")
+    print("  Setup: git clone https://github.com/iMoonLab/yolov13.git")
+    print("  Models: https://github.com/iMoonLab/yolov13/releases")
 
 if __name__ == '__main__':
     print("=" * 60)

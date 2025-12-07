@@ -19,7 +19,7 @@ def generate_launch_description():
         
         # 2. Launch Our Brain
         Node(
-            package='ican_orchestrator',
+            package='ican_brain',
             executable='brain_node',
             name='brain_node',
             output='screen'
@@ -35,7 +35,7 @@ def generate_launch_description():
         
         # 4. Launch MCP Bridge
         Node(
-            package='ican_mcp_server',
+            package='ican_tools',
             executable='behavior_server',
             name='behavior_server',
             output='screen'

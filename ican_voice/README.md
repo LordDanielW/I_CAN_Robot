@@ -192,5 +192,5 @@ See [VENV_README.md](VENV_README.md) - packages must be in system Python, not ve
 ## See Also
 
 - [Voice Tool Calling Guide](../../VOICE_TOOL_CALLING_GUIDE.md) - Full system integration
-- [ican_orchestrator](../ican_orchestrator/) - LLM brain and prompt processing
-- [ican_mcp_server](../ican_mcp_server/) - Tool management system
+- [ican_brain](../ican_brain/) - LLM brain and prompt processing
+- [ican_tools](../ican_tools/) - Tool management system

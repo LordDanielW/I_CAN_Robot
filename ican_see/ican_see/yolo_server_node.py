@@ -1,7 +1,13 @@
 #!/usr/bin/env python3
 """
-YOLO Server Node - Object detection using YOLOv8
-Subscribes to camera images and publishes detection results
+YOLO Server Node - Object detection using YOLOv8 or YOLOv13
+
+Supports both:
+- YOLOv8 (stable, from Ultralytics) - models: yolov8n/s/m/l/x.pt
+- YOLOv13 (latest, from iMoonLab) - models: yolov13n/s/m/l/x.pt
+  Features HyperACE and FullPAD for improved accuracy
+
+Subscribes to camera images and publishes detection results.
 """
 
 import rclpy
@@ -20,7 +26,7 @@ class YOLOServer(Node):
         super().__init__('yolo_server')
         
         # Declare parameters
-        self.declare_parameter('model', 'yolov8n.pt')  # Model size: n, s, m, l, x
+        self.declare_parameter('model', 'yolov8n.pt')  # yolov8/yolov13 + size: n, s, m, l, x
         self.declare_parameter('confidence_threshold', 0.5)
         self.declare_parameter('device', 'cpu')  # 'cpu' or 'cuda'
         self.declare_parameter('image_topic', '/image')
@@ -50,14 +56,16 @@ class YOLOServer(Node):
         )
         
         # Load YOLO model
-        self.get_logger().info(f'Loading YOLO model: {model_name} on {device}...')
+        version = 'YOLOv13' if 'v13' in model_name else 'YOLOv8'
+        self.get_logger().info(f'Loading {version} model: {model_name} on {device}...')
         try:
             self.model = YOLO(model_name)
             if device == 'cuda':
                 self.model.to('cuda')
-            self.get_logger().info('YOLO model loaded successfully')
+            self.get_logger().info(f'{version} model loaded successfully')
         except Exception as e:
-            self.get_logger().error(f'Failed to load YOLO model: {e}')
+            self.get_logger().error(f'Failed to load {version} model: {e}')
+            self.get_logger().error('Tip: Use yolov8n.pt for stable version or yolov13n.pt for latest')
             raise
         
         self.frame_count = 0

@@ -25,7 +25,7 @@ def generate_launch_description():
         
         # Prompt Node - Wake word detection & context building
         Node(
-            package='ican_orchestrator',
+            package='ican_brain',
             executable='prompt_node',
             name='prompt_node',
             output='screen',
@@ -38,7 +38,7 @@ def generate_launch_description():
         
         # Ollama LLM - AI brain for natural language understanding
         Node(
-            package='ican_orchestrator',
+            package='ican_brain',
             executable='ollama_tool_node',
             name='ollama_tool_node',
             output='screen',
@@ -49,7 +49,7 @@ def generate_launch_description():
         
         # Tool Manager - Orchestrates tool discovery and execution
         Node(
-            package='ican_mcp_server',
+            package='ican_tools',
             executable='tool_manager_node',
             name='tool_manager_node',
             output='screen'
@@ -57,7 +57,7 @@ def generate_launch_description():
         
         # Dice Service - Example tool for RPG dice rolling
         Node(
-            package='ican_mcp_server',
+            package='ican_tools',
             executable='dice_service_node',
             name='dice_service_node',
             output='screen'
