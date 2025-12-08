@@ -25,12 +25,12 @@ setup(
     zip_safe=True,
     maintainer='fire',
     maintainer_email='user@todo.todo',
-    description='Part of I_CAN_Robot stack',
+    description='Gazebo simulation and digital twin for I_CAN Robot',
     license='Apache-2.0',
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            
+            # Launch files are invoked via ros2 launch, not console scripts
         ],
     },
 )

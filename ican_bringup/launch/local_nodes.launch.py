@@ -30,6 +30,14 @@ def generate_launch_description():
             name='audio_streamer',
             output='screen'
         ),        
+
+        # Audio playback - captures and plays speaker audio
+        Node(
+            package='ican_voice',
+            executable='audio_playback_node',
+            name='audio_playback',
+            output='screen'
+        ),  
         
         # Joystick node - publishes joystick input
         Node(

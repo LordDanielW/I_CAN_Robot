@@ -5,6 +5,37 @@ Uses faster-whisper with large-v3-turbo for RTX 5070 Ti
 Subscribes to audio stream and publishes transcribed text
 """
 
+import os
+import sys
+
+# Fix cuDNN library path for pip-installed nvidia-cudnn-cu12
+def setup_cudnn_path():
+    """Add pip-installed cuDNN to library path"""
+    try:
+        import site
+        user_site = site.getusersitepackages()
+        
+        # Common locations for pip-installed CUDA libraries
+        cuda_paths = [
+            os.path.join(user_site, 'nvidia', 'cudnn', 'lib'),
+            os.path.join(user_site, 'nvidia/cudnn/lib'),
+            os.path.expanduser('~/.local/lib/python3.10/site-packages/nvidia/cudnn/lib'),
+            '/usr/local/lib/python3.10/dist-packages/nvidia/cudnn/lib',
+        ]
+        
+        existing_ld_path = os.environ.get('LD_LIBRARY_PATH', '')
+        new_paths = [p for p in cuda_paths if os.path.exists(p)]
+        
+        if new_paths:
+            os.environ['LD_LIBRARY_PATH'] = ':'.join(new_paths + [existing_ld_path])
+            return True
+        return False
+    except Exception:
+        return False
+
+# Setup cuDNN path before importing torch/faster-whisper
+setup_cudnn_path()
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import UInt8MultiArray, String
@@ -50,23 +81,61 @@ class WhisperServer(Node):
         
         # Initialize Whisper model with GPU optimization
         self.get_logger().info(f'Loading Whisper model: {model_size} on {device} ({compute_type})...')
-        try:
-            self.model = WhisperModel(
-                model_size,
-                device=device,
-                compute_type=compute_type,
-                download_root=None,  # Use default cache
-            )
-            
-            # Enable batched inference for GPU efficiency
-            self.batched_model = BatchedInferencePipeline(model=self.model)
-            self.get_logger().info('Whisper model loaded with batched inference pipeline')
-            
-        except Exception as e:
-            self.get_logger().error(f'Failed to load Whisper model: {e}')
-            self.get_logger().warn('Falling back to CPU mode...')
-            self.model = WhisperModel(model_size, device='cpu', compute_type='int8')
-            self.batched_model = None
+        
+        self.model = None
+        self.batched_model = None
+        
+        # Try GPU first, fall back to CPU if needed
+        if device == 'cuda':
+            try:
+                import torch
+                if not torch.cuda.is_available():
+                    raise RuntimeError("CUDA not available")
+                
+                self.get_logger().info(f'CUDA available: {torch.cuda.get_device_name(0)}')
+                
+                self.model = WhisperModel(
+                    model_size,
+                    device=device,
+                    compute_type=compute_type,
+                    download_root=None,
+                )
+                
+                # Test the model with a small array to catch cuDNN errors early
+                test_audio = np.zeros(16000, dtype=np.float32)
+                try:
+                    list(self.model.transcribe(test_audio, language=self.language))
+                    self.get_logger().info('✓ GPU inference test passed')
+                    
+                    # Enable batched inference for GPU efficiency
+                    self.batched_model = BatchedInferencePipeline(model=self.model)
+                    self.get_logger().info('✓ Whisper model loaded with batched inference pipeline')
+                    
+                except Exception as e:
+                    self.get_logger().warn(f'GPU inference test failed: {e}')
+                    raise RuntimeError("GPU inference not working")
+                
+            except Exception as e:
+                self.get_logger().warn(f'Failed to load GPU model: {e}')
+                self.get_logger().info('Falling back to CPU mode...')
+                device = 'cpu'
+                compute_type = 'int8'
+                self.model = None
+        
+        # CPU fallback
+        if self.model is None:
+            try:
+                self.get_logger().info(f'Loading Whisper on CPU ({compute_type})...')
+                self.model = WhisperModel(
+                    model_size,
+                    device='cpu',
+                    compute_type=compute_type,
+                    download_root=None,
+                )
+                self.get_logger().info('✓ Whisper model loaded on CPU')
+            except Exception as e:
+                self.get_logger().error(f'Failed to load Whisper model: {e}')
+                raise
         
         # Audio buffer configuration
         self.sample_rate = 16000
@@ -85,8 +154,16 @@ class WhisperServer(Node):
         self.process_timer = self.create_timer(0.5, self.check_and_process)
         
         self.get_logger().info(f'Whisper Server ready. Listening on /audio_stream...')
-        self.get_logger().info(f'  Model: {model_size}, Device: {device}, Compute: {compute_type}')
+        self.get_logger().info(f'  Model: {model_size}')
+        self.get_logger().info(f'  Device: {"GPU (batched)" if self.batched_model else "GPU" if device == "cuda" else "CPU"}')
+        self.get_logger().info(f'  Compute: {compute_type}')
         self.get_logger().info(f'  Buffer: {self.buffer_seconds}s, Batch size: {self.batch_size}')
+        
+        if device == 'cpu':
+            self.get_logger().warn('⚠️  Running on CPU - speech recognition will be slower')
+            self.get_logger().info('To fix GPU issues:')
+            self.get_logger().info('  1. Install cuDNN: sudo apt install libcudnn8 libcudnn8-dev')
+            self.get_logger().info('  2. Or use CPU: --ros-args -p device:=cpu')
     
     def audio_callback(self, msg):
         """Accumulate incoming audio data"""

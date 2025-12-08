@@ -34,6 +34,9 @@ setup(
             'audio_streamer_node = ican_voice.audio_streamer_node:main',
             'audio_playback_node = ican_voice.audio_playback_node:main',
             'tts_node = ican_voice.tts_node:main',
+            # Test nodes
+            'test_audio_streamer = ican_voice.test_audio_streamer:main',
+            'test_audio_playback = ican_voice.test_audio_playback:main',
         ],
     },
 )

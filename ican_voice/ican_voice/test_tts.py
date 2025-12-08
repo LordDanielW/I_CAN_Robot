@@ -2,11 +2,55 @@
 """
 TTS Test Script - Kokoro vs Piper Comparison
 Tests GPU-accelerated Kokoro-82M and Piper TTS
+WSL-compatible: Saves audio files instead of direct playback
 """
 
 import time
 import sys
 import os
+import wave
+
+# Check if running on WSL
+IS_WSL = 'microsoft' in os.uname().release.lower()
+
+def save_wav(filename, audio, sample_rate):
+    """Save audio as WAV file"""
+    import numpy as np
+    
+    # Convert float to int16
+    if audio.dtype == np.float32 or audio.dtype == np.float64:
+        audio = (audio * 32767).astype(np.int16)
+    
+    with wave.open(filename, 'wb') as wav_file:
+        wav_file.setnchannels(1)
+        wav_file.setsampwidth(2)  # 16-bit
+        wav_file.setframerate(sample_rate)
+        wav_file.writeframes(audio.tobytes())
+    
+    print(f"💾 Saved: {filename}")
+
+def play_or_save_audio(audio, sample_rate, filename):
+    """Play audio if possible, otherwise save to file"""
+    if IS_WSL:
+        print(f"\n💾 WSL detected - saving audio to file...")
+        save_wav(filename, audio, sample_rate)
+        print(f"   Play on Windows: start {filename}")
+        return True
+    else:
+        try:
+            import sounddevice as sd
+            print("\n🔊 Playing audio...")
+            sd.play(audio, samplerate=sample_rate)
+            sd.wait()
+            
+            # Also save file
+            save_wav(filename, audio, sample_rate)
+            return True
+        except Exception as e:
+            print(f"✗ Playback error: {e}")
+            print(f"   Saving to file instead...")
+            save_wav(filename, audio, sample_rate)
+            return False
 
 def test_kokoro():
     """Test Kokoro TTS"""
@@ -17,7 +61,6 @@ def test_kokoro():
     try:
         import torch
         from kokoro import KPipeline
-        import sounddevice as sd
         import numpy as np
         
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -58,10 +101,8 @@ def test_kokoro():
             print(f"  Audio duration: {duration:.2f}s")
             print(f"  Real-Time Factor: {rtf:.3f}x {'✓ Real-time!' if rtf < 1 else ''}")
             
-            # Play audio
-            print("\n🔊 Playing audio...")
-            sd.play(audio, samplerate=24000)
-            sd.wait()
+            # Play or save audio
+            play_or_save_audio(audio, 24000, "kokoro_test.wav")
             
             return True, gen_time, duration
         else:
@@ -89,7 +130,6 @@ def test_piper():
     
     try:
         import subprocess
-        import sounddevice as sd
         import numpy as np
         
         # Find Piper model
@@ -145,10 +185,8 @@ def test_piper():
         print(f"  Audio duration: {duration:.2f}s")
         print(f"  Real-Time Factor: {rtf:.3f}x {'✓ Real-time!' if rtf < 1 else ''}")
         
-        # Play audio
-        print("\n🔊 Playing audio...")
-        sd.play(audio, samplerate=sample_rate)
-        sd.wait()
+        # Play or save audio
+        play_or_save_audio(audio, sample_rate, "piper_test.wav")
         
         return True, gen_time, duration
         
@@ -168,6 +206,11 @@ def main():
     print("=" * 60)
     print("TTS Comparison Test: Kokoro vs Piper")
     print("=" * 60)
+    
+    if IS_WSL:
+        print("🪟 WSL detected - audio will be saved to WAV files")
+        print("   Play files with: explorer.exe <filename>.wav")
+        print()
     
     results = {}
     

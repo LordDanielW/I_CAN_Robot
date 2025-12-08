@@ -119,21 +119,21 @@ apt install -y \
 # #################################
 # NOTE: We install to SYSTEM Python, not venv, because ROS2's colcon
 # generates entry points with #!/usr/bin/python3 hardcoded.
-# Using --break-system-packages is safe - it just bypasses PEP 668.
+# Using is safe - it just bypasses PEP 668.
 
 echo "📦 Installing Python packages to SYSTEM Python..."
 echo "   (Required for ros2 run compatibility)"
 
 # Upgrade pip first
-/usr/bin/python3 -m pip install --break-system-packages --upgrade pip setuptools wheel
+/usr/bin/python3 -m pip install --upgrade pip setuptools wheel
 
 # Core packages
-/usr/bin/python3 -m pip install --break-system-packages \
+/usr/bin/python3 -m pip install \
     mcp openai pyyaml
 
 # PyTorch with CUDA 12.1 (for RTX 50/40/30 series)
 echo "📦 Installing PyTorch with CUDA 12.1..."
-/usr/bin/python3 -m pip install --break-system-packages \
+/usr/bin/python3 -m pip install \
     torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
 
 # #################################
@@ -141,7 +141,7 @@ echo "📦 Installing PyTorch with CUDA 12.1..."
 # #################################
 
 echo "📦 Installing Faster-Whisper (large-v3-turbo)..."
-/usr/bin/python3 -m pip install --break-system-packages \
+/usr/bin/python3 -m pip install \
     faster-whisper pyaudio soundfile
 
 # Pre-download model (optional but recommended)
@@ -158,11 +158,11 @@ print('Model cached successfully')
 # #################################
 
 echo "📦 Installing Kokoro TTS..."
-/usr/bin/python3 -m pip install --break-system-packages \
+/usr/bin/python3 -m pip install \
     kokoro sounddevice
 
 # Also install Piper as fallback
-/usr/bin/python3 -m pip install --break-system-packages piper-tts || true
+/usr/bin/python3 -m pip install piper-tts || true
 
 # Download Piper voice model as backup
 mkdir -p $USER_HOME/piper_voices
@@ -179,7 +179,7 @@ chown -R $REAL_USER:$REAL_USER $USER_HOME/piper_voices
 # #################################
 
 echo "📦 Installing YOLO (ultralytics)..."
-/usr/bin/python3 -m pip install --break-system-packages \
+/usr/bin/python3 -m pip install \
     ultralytics opencv-python
 
 # #################################
