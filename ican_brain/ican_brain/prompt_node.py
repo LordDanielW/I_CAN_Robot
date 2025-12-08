@@ -48,6 +48,9 @@ class PromptNode(Node):
             'hey spots',
             'a spot',
             'hay spot',
+            'stop',
+            'spot',
+            'please spot',
         ]
         
         # Text buffer for accumulating speech

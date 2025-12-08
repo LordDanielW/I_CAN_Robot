@@ -65,9 +65,6 @@ class ToolManagerNode(Node):
             10
         )
         
-        # Publisher for tool results
-        self.tool_result_pub = self.create_publisher(String, '/tool_result', 10)
-        
         # Service to list available tools
         self.list_service = self.create_service(
             Trigger,
@@ -89,7 +86,6 @@ class ToolManagerNode(Node):
         self.get_logger().info('Tool Manager ready')
         self.get_logger().info(f'  Registered tools: {list(self.tools.keys())}')
         self.get_logger().info('  Subscribed to: /llm_response')
-        self.get_logger().info('  Publishing to: /tool_result')
         self.get_logger().info('  Service: /tools/list')
         
         # Initial status check
@@ -182,13 +178,8 @@ class ToolManagerNode(Node):
             self.get_logger().info(f'→ Sent to dice service: "{command}"')
     
     def dice_result_callback(self, msg):
-        """Forward dice results to tool result topic"""
-        self.get_logger().info(f'Tool result received: {msg.data[:50]}...')
-        
-        # Republish to unified tool result topic
-        result_msg = String()
-        result_msg.data = f"[DICE TOOL RESULT]\n{msg.data}"
-        self.tool_result_pub.publish(result_msg)
+        """Log dice results"""
+        self.get_logger().info(f'Dice result: {msg.data[:100]}...')
 
 
 def main(args=None):

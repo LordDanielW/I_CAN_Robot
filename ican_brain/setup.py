@@ -30,13 +30,9 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            # Active nodes (current architecture)
             'prompt_node = ican_brain.prompt_node:main',
-            'ollama_tool_node = ican_brain.ollama_tool_node:main',
-            'debug_monitor = ican_brain.debug_monitor:main',
-            
-            # Debug/test nodes (kept for development)
             'ollama_node = ican_brain.ollama_node:main',
+            'debug_monitor = ican_brain.debug_monitor:main',            
         ],
     },
 )
