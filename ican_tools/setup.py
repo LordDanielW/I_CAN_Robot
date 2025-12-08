@@ -27,6 +27,8 @@ setup(
             # Active nodes (ROS2-native tool calling)
             'tool_manager_node = ican_tools.tool_manager_node:main',
             'dice_service_node = ican_tools.dice_service_node:main',
+            'move_robot_node = ican_tools.move_robot_node:main',
+            'query_room_node = ican_tools.query_room_node:main',
         ],
     },
 )

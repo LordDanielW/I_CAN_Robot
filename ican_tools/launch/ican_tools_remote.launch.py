@@ -24,4 +24,20 @@ def generate_launch_description():
             name='dice_service_node',
             output='screen'
         ),
+        
+        # Move Robot - Preprogrammed movement paths
+        Node(
+            package='ican_tools',
+            executable='move_robot_node',
+            name='move_robot_node',
+            output='screen'
+        ),
+        
+        # Query Room - Vision-based room description using VLM
+        Node(
+            package='ican_tools',
+            executable='query_room_node',
+            name='query_room_node',
+            output='screen'
+        ),
     ])

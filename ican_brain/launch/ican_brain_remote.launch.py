@@ -29,7 +29,7 @@ def generate_launch_description():
             name='ollama_node',
             output='screen',
             parameters=[{
-                'llm_model': 'qwen2.5:7b'
+                'model': 'qwen3-vl:8b'
             }]
         ),
     ])

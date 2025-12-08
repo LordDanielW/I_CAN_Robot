@@ -1,42 +1,95 @@
+#!/usr/bin/env python3
+"""
+Audio Streamer Node - Microphone capture and streaming
+Captures audio from microphone and publishes to ROS topic
+"""
+
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import UInt8MultiArray
 import pyaudio
 
+
 class AudioStreamer(Node):
     def __init__(self):
         super().__init__('audio_streamer')
+        
+        # Parameters
+        self.declare_parameter('sample_rate', 16000)  # Whisper expects 16kHz
+        self.declare_parameter('channels', 1)
+        self.declare_parameter('chunk_size', 4096)  # ~256ms @ 16kHz
+        self.declare_parameter('device_index', -1)  # -1 for default
+        
+        self.rate = self.get_parameter('sample_rate').value
+        self.channels = self.get_parameter('channels').value
+        self.chunk_size = self.get_parameter('chunk_size').value
+        device_index = self.get_parameter('device_index').value
+        
+        # Publisher
         self.publisher_ = self.create_publisher(UInt8MultiArray, 'audio_stream', 10)
         
         # Audio Setup
-        self.chunk_size = 4096 # Send bigger chunks for network efficiency
-        self.format = pyaudio.paInt16
-        self.channels = 1
-        self.rate = 16000
-        
         self.p = pyaudio.PyAudio()
-        self.stream = self.p.open(format=self.format,
-                                  channels=self.channels,
-                                  rate=self.rate,
-                                  input=True,
-                                  frames_per_buffer=self.chunk_size)
+        
+        # List available devices
+        self.get_logger().info("Available audio input devices:")
+        for i in range(self.p.get_device_count()):
+            info = self.p.get_device_info_by_index(i)
+            if info['maxInputChannels'] > 0:
+                self.get_logger().info(f"  [{i}] {info['name']}")
+        
+        # Open stream
+        stream_kwargs = {
+            'format': pyaudio.paInt16,
+            'channels': self.channels,
+            'rate': self.rate,
+            'input': True,
+            'frames_per_buffer': self.chunk_size,
+        }
+        
+        if device_index >= 0:
+            stream_kwargs['input_device_index'] = device_index
+        
+        try:
+            self.stream = self.p.open(**stream_kwargs)
+            self.get_logger().info(f"Opened audio stream @ {self.rate}Hz, {self.chunk_size} frames/chunk")
+        except Exception as e:
+            self.get_logger().error(f"Failed to open audio stream: {e}")
+            raise
         
         # Timer to read audio continuously
-        # 4096 frames @ 16000Hz is approx 0.25 seconds
-        self.timer = self.create_timer(0.01, self.stream_callback)
-        self.get_logger().info(f"Streaming Audio to /audio_stream at {self.rate}Hz...")
+        # Read interval should be less than chunk duration to avoid buffer overflow
+        chunk_duration = self.chunk_size / self.rate
+        self.timer = self.create_timer(chunk_duration * 0.5, self.stream_callback)
+        
+        self.get_logger().info(f"Streaming audio to /audio_stream...")
 
     def stream_callback(self):
-        if self.stream.is_active():
-            # Read raw bytes
+        """Read audio from microphone and publish"""
+        if not self.stream.is_active():
+            return
+            
+        try:
+            # Read raw bytes from microphone
             data = self.stream.read(self.chunk_size, exception_on_overflow=False)
             
-            # Create ROS message
+            # Create and publish ROS message
             msg = UInt8MultiArray()
-            # Convert bytes to list of ints (required for UInt8MultiArray in Python)
-            msg.data = list(data) 
-            
+            msg.data = list(data)
             self.publisher_.publish(msg)
+            
+        except Exception as e:
+            self.get_logger().warn(f"Audio read error: {e}")
+
+    def destroy_node(self):
+        """Cleanup audio resources"""
+        if hasattr(self, 'stream'):
+            self.stream.stop_stream()
+            self.stream.close()
+        if hasattr(self, 'p'):
+            self.p.terminate()
+        super().destroy_node()
+
 
 def main(args=None):
     rclpy.init(args=args)
@@ -46,9 +99,6 @@ def main(args=None):
     except KeyboardInterrupt:
         pass
     finally:
-        node.stream.stop_stream()
-        node.stream.close()
-        node.p.terminate()
         node.destroy_node()
         rclpy.shutdown()
 

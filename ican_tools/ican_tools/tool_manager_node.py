@@ -28,6 +28,7 @@ class ToolManagerNode(Node):
         
         # Tool registry: {tool_name: {topic, description, pattern, status}}
         self.tools = {
+            # Dice tools
             'roll': {
                 'topic': '/dice/command',
                 'description': 'roll(dice_notation) - Roll dice using RPG notation (e.g., d20, 3d6+5, 2d10-2)',
@@ -51,11 +52,51 @@ class ToolManagerNode(Node):
                 'description': 'roll_history(limit) - Show recent dice roll history (e.g., roll_history(5))',
                 'pattern': r'TOOL:roll_history\((\d+)\)',
                 'status': 'unknown'
+            },
+            # Movement tools
+            'move_to_bathroom': {
+                'topic': '/move_robot/command',
+                'description': 'move_to_bathroom() - Move robot through door to bathroom (preprogrammed path)',
+                'pattern': r'TOOL:move_to_bathroom\(\)',
+                'status': 'unknown'
+            },
+            'move_through_door': {
+                'topic': '/move_robot/command',
+                'description': 'move_through_door() - Navigate robot through a doorway',
+                'pattern': r'TOOL:move_through_door\(\)',
+                'status': 'unknown'
+            },
+            'stop_robot': {
+                'topic': '/move_robot/command',
+                'description': 'stop_robot() - Emergency stop for robot movement',
+                'pattern': r'TOOL:stop_robot\(\)',
+                'status': 'unknown'
+            },
+            # Vision tools
+            'describe_room': {
+                'topic': '/query_room/command',
+                'description': 'describe_room() - Use camera to describe the current room to a blind person',
+                'pattern': r'TOOL:describe_room\(\)',
+                'status': 'unknown'
+            },
+            'check_safety': {
+                'topic': '/query_room/command',
+                'description': 'check_safety() - Analyze camera view for navigation hazards and obstacles',
+                'pattern': r'TOOL:check_safety\(\)',
+                'status': 'unknown'
+            },
+            'find_door': {
+                'topic': '/query_room/command',
+                'description': 'find_door() - Look for doors in the camera view',
+                'pattern': r'TOOL:find_door\(\)',
+                'status': 'unknown'
             }
         }
         
         # Publishers for tool commands
         self.dice_command_pub = self.create_publisher(String, '/dice/command', 10)
+        self.move_command_pub = self.create_publisher(String, '/move_robot/command', 10)
+        self.query_room_pub = self.create_publisher(String, '/query_room/command', 10)
         
         # Subscriber for LLM output
         self.llm_output_sub = self.create_subscription(
@@ -80,6 +121,22 @@ class ToolManagerNode(Node):
             10
         )
         
+        # Subscriber to check move robot status
+        self.move_status_sub = self.create_subscription(
+            String,
+            '/move_robot/status',
+            self.move_status_callback,
+            10
+        )
+        
+        # Subscriber to check query room status
+        self.query_status_sub = self.create_subscription(
+            String,
+            '/query_room/status',
+            self.query_status_callback,
+            10
+        )
+        
         # Timer to check tool status
         self.status_timer = self.create_timer(5.0, self.check_tool_status)
         
@@ -93,12 +150,15 @@ class ToolManagerNode(Node):
     
     def check_tool_status(self):
         """Check if tool nodes are available"""
-        # For now, assume dice tools are available if we're running
+        # For now, assume tools are available if we're running
         # In the future, this could ping service nodes
         for tool_name in self.tools:
-            if 'dice' in self.tools[tool_name]['topic']:
-                # Try to detect if dice_service_node is running
-                # Simple heuristic: if we've seen any dice results, it's active
+            topic = self.tools[tool_name]['topic']
+            if '/dice/command' in topic:
+                self.tools[tool_name]['status'] = 'available'
+            elif '/move_robot/command' in topic:
+                self.tools[tool_name]['status'] = 'available'
+            elif '/query_room/command' in topic:
                 self.tools[tool_name]['status'] = 'available'
     
     def handle_list_tools(self, request, response):
@@ -166,20 +226,49 @@ class ToolManagerNode(Node):
             command = f'coin flip {params}'
         elif tool_name == 'roll_history':
             command = f'history {params}'
+        # Movement tools
+        elif tool_name == 'move_to_bathroom':
+            command = 'bathroom'
+        elif tool_name == 'move_through_door':
+            command = 'door'
+        elif tool_name == 'stop_robot':
+            command = 'stop'
+        # Vision tools
+        elif tool_name == 'describe_room':
+            command = 'describe room'
+        elif tool_name == 'check_safety':
+            command = 'check safety'
+        elif tool_name == 'find_door':
+            command = 'find door'
         else:
             self.get_logger().warn(f'Unknown tool: {tool_name}')
             return
         
         # Publish command to appropriate topic
+        cmd_msg = String()
+        cmd_msg.data = command
+        
         if '/dice/command' in topic:
-            cmd_msg = String()
-            cmd_msg.data = command
             self.dice_command_pub.publish(cmd_msg)
             self.get_logger().info(f'→ Sent to dice service: "{command}"')
+        elif '/move_robot/command' in topic:
+            self.move_command_pub.publish(cmd_msg)
+            self.get_logger().info(f'→ Sent to move robot: "{command}"')
+        elif '/query_room/command' in topic:
+            self.query_room_pub.publish(cmd_msg)
+            self.get_logger().info(f'→ Sent to query room: "{command}"')
     
     def dice_result_callback(self, msg):
         """Log dice results"""
         self.get_logger().info(f'Dice result: {msg.data[:100]}...')
+    
+    def move_status_callback(self, msg):
+        """Log movement status"""
+        self.get_logger().info(f'Movement status: {msg.data}')
+    
+    def query_status_callback(self, msg):
+        """Log query room status"""
+        self.get_logger().info(f'Query room status: {msg.data}')
 
 
 def main(args=None):
