@@ -32,6 +32,7 @@ setup(
         'console_scripts': [
             'whisper_server_node = ican_voice.whisper_server_node:main',
             'audio_streamer_node = ican_voice.audio_streamer_node:main',
+            'audio_playback_node = ican_voice.audio_playback_node:main',
             'tts_node = ican_voice.tts_node:main',
         ],
     },
