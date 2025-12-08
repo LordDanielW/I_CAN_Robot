@@ -8,6 +8,22 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import UInt8MultiArray
 import pyaudio
+import os
+import sys
+from contextlib import contextmanager
+
+@contextmanager
+def suppress_alsa_errors():
+    """Temporarily suppress ALSA error messages"""
+    devnull = os.open(os.devnull, os.O_WRONLY)
+    old_stderr = os.dup(2)
+    try:
+        os.dup2(devnull, 2)
+        os.close(devnull)
+        yield
+    finally:
+        os.dup2(old_stderr, 2)
+        os.close(old_stderr)
 
 
 class AudioStreamer(Node):
@@ -28,8 +44,9 @@ class AudioStreamer(Node):
         # Publisher
         self.publisher_ = self.create_publisher(UInt8MultiArray, 'audio_stream', 10)
         
-        # Audio Setup
-        self.p = pyaudio.PyAudio()
+        # Audio Setup (suppress ALSA warnings during initialization)
+        with suppress_alsa_errors():
+            self.p = pyaudio.PyAudio()
         
         # List available devices
         self.get_logger().info("Available audio input devices:")
