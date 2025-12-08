@@ -29,21 +29,7 @@ def generate_launch_description():
             executable='audio_streamer_node',
             name='audio_streamer',
             output='screen'
-        ),
-        
-        # YOLO Object Detection - processes camera images
-        Node(
-            package='ican_see',
-            executable='yolo_server_node',
-            name='yolo_server',
-            output='screen',
-            parameters=[{
-                'model': 'yolov8n.pt',  # Use yolov8n.pt (stable) or yolov13n.pt (latest)
-                'confidence_threshold': 0.5,
-                'device': 'cpu',
-                'image_topic': '/image'
-            }]
-        ),
+        ),        
         
         # Joystick node - publishes joystick input
         Node(

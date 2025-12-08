@@ -6,61 +6,37 @@ Launch this on a powerful remote computer for best performance.
 """
 
 from launch import LaunchDescription
-from launch_ros.actions import Node
+from launch.actions import IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from ament_index_python.packages import get_package_share_directory
+import os
 
 def generate_launch_description():
+    # Get package directories
+    ican_brain_dir = get_package_share_directory('ican_brain')
+    ican_tools_dir = get_package_share_directory('ican_tools')
+    ican_voice_dir = get_package_share_directory('ican_voice')
+    
     return LaunchDescription([
-        # Speech Recognition - Converts audio to text
-        Node(
-            package='ican_voice',
-            executable='whisper_server_node',
-            name='whisper_server',
-            output='screen',
-            parameters=[{
-                'model_size': 'base.en',
-                'device': 'cpu',
-                'compute_type': 'int8'
-            }]
+        # Include Brain Remote Launch
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(ican_brain_dir, 'launch', 'ican_brain_remote.launch.py')
+            )
         ),
         
-        # Prompt Node - Wake word detection & context building
-        Node(
-            package='ican_brain',
-            executable='prompt_node',
-            name='prompt_node',
-            output='screen',
-            parameters=[{
-                'wake_word': 'hey spot',
-                'buffer_timeout': 2.0,
-                'wake_word_threshold': 0.75
-            }]
+        # Include Tools Remote Launch
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(ican_tools_dir, 'launch', 'ican_tools_remote.launch.py')
+            )
         ),
         
-        # Ollama LLM - AI brain for natural language understanding
-        Node(
-            package='ican_brain',
-            executable='ollama_tool_node',
-            name='ollama_tool_node',
-            output='screen',
-            parameters=[{
-                'llm_model': 'qwen2.5:7b'
-            }]
-        ),
-        
-        # Tool Manager - Orchestrates tool discovery and execution
-        Node(
-            package='ican_tools',
-            executable='tool_manager_node',
-            name='tool_manager_node',
-            output='screen'
-        ),
-        
-        # Dice Service - Example tool for RPG dice rolling
-        Node(
-            package='ican_tools',
-            executable='dice_service_node',
-            name='dice_service_node',
-            output='screen'
+        # Include Voice Remote Launch
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                os.path.join(ican_voice_dir, 'launch', 'ican_voice_remote.launch.py')
+            )
         ),
     ])
 
