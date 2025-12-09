@@ -17,6 +17,8 @@ import ollama
 import threading
 import time
 import base64
+import subprocess
+import sys
 
 
 class OllamaToolNode(Node):
@@ -32,6 +34,9 @@ class OllamaToolNode(Node):
         
         self.get_logger().info(f'Ollama Tool Node initialized.')
         self.get_logger().info(f'  Model: {self.model} (handles both text and vision)')
+        
+        # Check if Ollama is running and model is available
+        self.ensure_ollama_ready()
         
         self.client = ollama
         
@@ -54,6 +59,49 @@ class OllamaToolNode(Node):
         self.get_logger().info('  VISION PATH:')
         self.get_logger().info('    - Subscribed to: /llm_vision_query')
         self.get_logger().info('    - Publishing to: /tts/speak')
+    
+    def ensure_ollama_ready(self):
+        """Check if Ollama is running and model is available"""
+        max_retries = 3
+        retry_delay = 2.0
+        
+        for attempt in range(max_retries):
+            try:
+                # Test connection to Ollama
+                models = ollama.list()
+                self.get_logger().info(f'✓ Ollama is running')
+                
+                # Check if our model is available
+                model_names = [m['name'] for m in models.get('models', [])]
+                if self.model in model_names:
+                    self.get_logger().info(f'✓ Model {self.model} is available')
+                    return
+                else:
+                    self.get_logger().warn(f'Model {self.model} not found locally')
+                    self.get_logger().info(f'Available models: {", ".join(model_names) if model_names else "(none)"}')
+                    self.get_logger().info(f'Pulling {self.model}... (this may take a few minutes)')
+                    
+                    # Pull the model
+                    try:
+                        ollama.pull(self.model)
+                        self.get_logger().info(f'✓ Successfully pulled {self.model}')
+                        return
+                    except Exception as e:
+                        self.get_logger().error(f'Failed to pull model: {e}')
+                        raise
+                        
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    self.get_logger().warn(f'Ollama connection failed (attempt {attempt + 1}/{max_retries}): {e}')
+                    self.get_logger().info(f'Retrying in {retry_delay}s...')
+                    time.sleep(retry_delay)
+                else:
+                    self.get_logger().error(f'Failed to connect to Ollama after {max_retries} attempts')
+                    self.get_logger().error('Please ensure Ollama is running:')
+                    self.get_logger().error('  1. Check status: systemctl status ollama')
+                    self.get_logger().error('  2. Start service: sudo systemctl start ollama')
+                    self.get_logger().error(f'  3. Or run manually: ollama serve')
+                    raise RuntimeError('Ollama not available')
     
     def text_prompt_callback(self, msg):
         """Handle incoming text prompts (Path 1: whisper → prompt_node → ollama → tool_manager)"""

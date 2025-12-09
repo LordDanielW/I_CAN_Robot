@@ -38,8 +38,8 @@ def generate_launch_description():
         # Audio playback - captures and plays speaker audio
         Node(
             package='ican_voice',
-            executable='audio_playback_node',
-            name='audio_playback',
+            executable='audio_playback_ffmpeg',
+            name='audio_playback_ffmpeg',
             output='screen'
         ),  
         
