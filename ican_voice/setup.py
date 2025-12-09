@@ -41,6 +41,8 @@ setup(
             # Test nodes
             'test_audio_streamer = ican_voice.test_audio_streamer:main',
             'test_audio_playback = ican_voice.test_audio_playback:main',
+            'test_whisper_to_tts = ican_voice.test_whisper_to_tts:main',
+            'test_tts_to_file = ican_voice.test_tts_to_file:main',
             'test_sound_node = ican_voice.test_sound_node:main',
             'test_ffmpeg_stream = ican_voice.test_ffmpeg_stream:main',
         ],
