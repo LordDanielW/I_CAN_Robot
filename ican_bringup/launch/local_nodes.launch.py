@@ -19,7 +19,11 @@ def generate_launch_description():
             name='cam2image',
             parameters=[{
                 'frequency': 5.0,  # Publish at 5Hz
+                'device_id': 0,  # /dev/video0 (Insta360 X5)
             }],
+            remappings=[
+                ('image', '/camera/image_raw'),
+            ],
             output='screen'
         ),
         

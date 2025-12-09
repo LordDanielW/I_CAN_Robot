@@ -8,6 +8,9 @@ setup(
     name=package_name,
     version='0.0.0',
     packages=find_packages(exclude=['test']),
+    package_data={
+        package_name: ['*.wav'],  # Include WAV files in the package
+    },
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
@@ -33,10 +36,13 @@ setup(
             'whisper_server_node = ican_voice.whisper_server_node:main',
             'audio_streamer_node = ican_voice.audio_streamer_node:main',
             'audio_playback_node = ican_voice.audio_playback_node:main',
+            'audio_playback_ffmpeg = ican_voice.audio_playback_ffmpeg:main',
             'tts_node = ican_voice.tts_node:main',
             # Test nodes
             'test_audio_streamer = ican_voice.test_audio_streamer:main',
             'test_audio_playback = ican_voice.test_audio_playback:main',
+            'test_sound_node = ican_voice.test_sound_node:main',
+            'test_ffmpeg_stream = ican_voice.test_ffmpeg_stream:main',
         ],
     },
 )

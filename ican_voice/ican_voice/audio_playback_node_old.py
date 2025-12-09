@@ -2,7 +2,7 @@
 """
 Audio Playback Node - Multi-rate audio player
 Supports both Kokoro (24kHz) and Piper (22050Hz) TTS outputs
-Uses PulseAudio for reliable Bluetooth A2DP playback
+Uses PulseAudio for reliable playback
 """
 
 import rclpy
@@ -14,6 +14,8 @@ import os
 import numpy as np
 import subprocess
 import tempfile
+import wave
+
 
 
 class AudioPlayer(Node):
@@ -23,27 +25,32 @@ class AudioPlayer(Node):
         # Parameters
         self.declare_parameter('sample_rate', 44100)  # A2DP Bluetooth standard rate
         self.declare_parameter('channels', 2)  # Stereo for A2DP
+        self.declare_parameter('use_pulse', True)  # Use PulseAudio
         self.declare_parameter('device_name', 'bluez_sink.41_42_F4_7A_02_A6.a2dp_sink')
-        self.declare_parameter('auto_rate_detect', True)
         
         self.sample_rate = self.get_parameter('sample_rate').value
         self.channels = self.get_parameter('channels').value
+        self.use_pulse = self.get_parameter('use_pulse').value
         self.device_name = self.get_parameter('device_name').value
-        self.auto_rate_detect = self.get_parameter('auto_rate_detect').value
         
         # TTS sample rate (may differ from output device rate)
         self.tts_sample_rate = 24000  # Default TTS rate
         
-        # Ensure A2DP profile is active on startup
+        # Ensure A2DP profile is active
         try:
             subprocess.run(['pactl', 'set-card-profile', 'bluez_card.41_42_F4_7A_02_A6', 'a2dp_sink'],
-                         check=False, capture_output=True, timeout=2)
-            self.get_logger().info('Set Bluetooth to A2DP profile')
+                         check=False, capture_output=True)
         except:
-            self.get_logger().warn('Could not set A2DP profile')
+            pass
         
         # Audio queue for smooth playback
         self.audio_queue = Queue(maxsize=100)
+        
+        # PyAudio setup (suppress ALSA warnings during initialization)
+        with suppress_alsa_errors():
+            self.p = pyaudio.PyAudio()
+        self.stream = None
+        self.init_audio_stream()
         
         # Subscribers
         self.sub_audio = self.create_subscription(
@@ -67,9 +74,30 @@ class AudioPlayer(Node):
         self.playback_thread = threading.Thread(target=self.playback_worker, daemon=True)
         self.playback_thread.start()
         
-        self.get_logger().info(f'Audio Player Ready @ {self.sample_rate}Hz ({self.channels}ch)')
-        self.get_logger().info(f'Output device: {self.device_name}')
-        self.get_logger().info(f'Listening on /audio/tts_stream...')
+        self.get_logger().info(f'Audio Player Ready @ {self.sample_rate}Hz. Listening on /audio/tts_stream...')
+    
+    def init_audio_stream(self):
+        """Initialize or reinitialize audio stream"""
+        if self.stream:
+            self.stream.stop_stream()
+            self.stream.close()
+        
+        stream_kwargs = {
+            'format': pyaudio.paInt16,
+            'channels': self.channels,
+            'rate': self.sample_rate,
+            'output': True,
+            'frames_per_buffer': self.buffer_size
+        }
+        
+        # Set specific device if requested
+        if self.device_index >= 0:
+            stream_kwargs['output_device_index'] = self.device_index
+            device_info = self.p.get_device_info_by_index(self.device_index)
+            self.get_logger().info(f'Using audio device {self.device_index}: {device_info["name"]}')
+        
+        self.stream = self.p.open(**stream_kwargs)
+        self.get_logger().info(f'Audio stream opened @ {self.sample_rate}Hz')
     
     def status_callback(self, msg):
         """Handle TTS status for auto sample rate detection"""
@@ -104,74 +132,43 @@ class AudioPlayer(Node):
         # Convert back to int16 bytes
         return resampled.astype(np.int16).tobytes()
     
-    def mono_to_stereo(self, mono_data):
-        """Convert mono audio to stereo"""
-        if self.channels == 1:
-            return mono_data
-        
-        # Convert to numpy array
-        mono_array = np.frombuffer(mono_data, dtype=np.int16)
-        
-        # Duplicate to stereo
-        stereo_array = np.column_stack([mono_array, mono_array])
-        
-        return stereo_array.tobytes()
-    
     def audio_callback(self, msg):
         """Queue incoming audio data"""
         try:
             audio_data = bytes(msg.data)
-            if len(audio_data) > 0:
-                self.audio_queue.put(audio_data, timeout=0.1)
+            self.audio_queue.put(audio_data, timeout=0.1)
         except:
             self.get_logger().warn('Audio queue full, dropping packet')
     
-    def play_audio_chunk(self, audio_data):
-        """Play audio chunk using PulseAudio"""
-        try:
-            # Resample if needed
-            if self.tts_sample_rate != self.sample_rate:
-                audio_data = self.resample_audio(audio_data, self.tts_sample_rate, self.sample_rate)
-            
-            # Convert to stereo if needed
-            audio_data = self.mono_to_stereo(audio_data)
-            
-            # Use paplay via stdin for streaming
-            process = subprocess.Popen(
-                ['paplay', '--device=' + self.device_name, 
-                 '--format=s16le', f'--rate={self.sample_rate}', 
-                 f'--channels={self.channels}', '--raw'],
-                stdin=subprocess.PIPE,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            
-            process.communicate(input=audio_data, timeout=5)
-            
-        except subprocess.TimeoutExpired:
-            process.kill()
-            self.get_logger().warn('Audio playback timeout')
-        except Exception as e:
-            self.get_logger().warn(f'Playback error: {e}')
-    
     def playback_worker(self):
         """Background thread for continuous playback"""
-        self.get_logger().info('Playback worker started')
-        
         while self.running:
             try:
                 audio_data = self.audio_queue.get(timeout=1.0)
-                if audio_data:
-                    self.play_audio_chunk(audio_data)
-            except:
+                if audio_data and self.stream:
+                    # Resample if TTS rate differs from output rate
+                    if self.tts_sample_rate != self.sample_rate:
+                        audio_data = self.resample_audio(audio_data, self.tts_sample_rate, self.sample_rate)
+                    
+                    # Write audio in smaller chunks to avoid buffer issues
+                    chunk_size = self.buffer_size * 2  # 2 bytes per int16 sample
+                    for i in range(0, len(audio_data), chunk_size):
+                        chunk = audio_data[i:i+chunk_size]
+                        self.stream.write(chunk, len(chunk) // 2)  # num_frames = bytes / 2
+            except Exception as e:
+                if 'audio_data' in locals() and audio_data:  # Only log if we had data
+                    self.get_logger().warn(f'Playback error: {e}')
                 continue
-        
-        self.get_logger().info('Playback worker stopped')
     
     def destroy_node(self):
         """Cleanup resources"""
         self.running = False
-        self.playback_thread.join(timeout=2.0)
+        
+        if self.stream:
+            self.stream.stop_stream()
+            self.stream.close()
+        
+        self.p.terminate()
         super().destroy_node()
 
 
