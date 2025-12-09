@@ -1,0 +1,13 @@
+go2_simple_nav:
+  ros__parameters:
+    goal_x: 0.0
+    goal_y: 0.0
+    loop_rate: 20.0
+    max_speed: 0.5
+    goal_tolerance: 0.25
+    goal_topic: /goal
+    goal_done_topic: /goal_reached
+    require_obstacle_on: true
+    obstacle_topic: /unitree/obstacle_on
+    driver_param_node: go2_driver_node
+    driver_param_name: obstacle_avoidance

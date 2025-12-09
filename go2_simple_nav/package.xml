@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>go2_simple_nav</name>
+  <version>0.0.1</version>
+  <description>Lightweight goal-seeking navigation for Unitree Go2 (no Nav2, no SLAM).</description>
+
+  <maintainer email="unknown@example.com">unknown</maintainer>
+  <license>BSD-3-Clause</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>std_msgs</exec_depend>
+  <exec_depend>rcl_interfaces</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

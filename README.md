@@ -56,6 +56,7 @@ ros2 launch ican_bringup local_nodes.launch.py
 | **ican_voice** | Speech recognition (Whisper) and text-to-speech (pyttsx3) | [ican_voice/README.md](ican_voice/README.md) |
 | **ican_see** | Object detection with YOLOv8/v13 | [ican_see/README.md](ican_see/README.md) |
 | **ican_tools** | ROS2-native tool registry and execution system | [ican_tools/README.md](ican_tools/README.md) |
+| **go2_simple_nav** | Navigation and vision-language nodes (joystick_goal_webrtc, qwen3_vl_node, webcam streaming) | [go2_simple_nav/README.md](go2_simple_nav/README.md) |
 
 ### Hardware Integration Packages
 
@@ -150,6 +151,25 @@ ros2 topic echo /yolo_detections
 # YOLO detects: person, chair, laptop with confidence scores
 ```
 
+### Joystick/WebRTC Navigation
+```bash
+# Start joystick-based navigation (remote)
+ros2 launch go2_simple_nav joystick_goal_webrtc.launch.py
+```
+This node allows remote goal setting via joystick or web interface, sending high-level navigation commands to the Go2 robot.
+
+### Vision-Language Inference (Qwen3-VL)
+```bash
+# Start vision-language node
+ros2 launch go2_simple_nav qwen3_vl.launch.py
+```
+Trigger the node by publishing to the `trigger_capture` topic. The node will capture an image and run Qwen3-VL inference, publishing results to `vlm_output`.
+
+```bash
+# Test script for publishing a simple image feed
+ros2 run go2_simple_nav publish_webcam_image.py
+```
+
 ### Testing Individual Components
 
 **Test Speech Recognition:**
@@ -182,6 +202,9 @@ ros2 topic echo /yolo_detections
 | `/tool_result` | String | Tool execution results |
 | `/yolo_detections` | Detection2DArray | Object detections from YOLO |
 | `/robot_speech` | String | Text for TTS to speak |
+| `/vlm_output` | String | Vision-language model output from Qwen3-VL node |
+| `/camera/image_raw` | sensor_msgs/Image | Raw webcam images for VL/vision nodes |
+| `/trigger_capture` | Bool | Triggers Qwen3-VL node to process an image |
 
 ## Configuration
 
@@ -213,6 +236,48 @@ Change model:
 ```bash
 ros2 run ican_brain ollama_tool_node --ros-args -p llm_model:='llama3:8b'
 ```
+
+## Navigation and Vision-Language Nodes
+
+### Navigation (go2_simple_nav)
+
+The `go2_simple_nav` package provides lightweight navigation for the Unitree Go2 robot:
+
+- **joystick_goal_webrtc**: Node for setting navigation goals via joystick input and WebRTC, enabling teleoperation and remote goal setting through a web interface.
+
+#### Launch Files
+
+- `joystick_goal_webrtc.launch.py`: Launches the joystick_goal_webrtc node for remote navigation control.
+
+#### Example Usage
+
+**Start joystick-based navigation (remote):**
+```bash
+ros2 launch go2_simple_nav joystick_goal_webrtc.launch.py
+```
+
+---
+
+### Vision-Language Model (VLM/LLM)
+
+The vision-language model (VLM) is handled by the same LLM system (Qwen3-VL) used for language tasks. The `qwen3_vl_node` enables multimodal (image+text) inference, allowing the robot to interpret visual scenes and answer questions about its environment.
+
+- **qwen3_vl_node**: Node for Qwen3-VL inference (image+text via LLM)
+
+#### Launch Files
+
+- `qwen3_vl.launch.py`: Launches the Qwen3-VL node for vision-language inference.
+
+#### Example Usage
+
+**Start vision-language node:**
+```bash
+ros2 launch go2_simple_nav qwen3_vl.launch.py
+```
+
+Trigger the node by publishing to the `trigger_capture` topic. The node will capture an image and run Qwen3-VL inference, publishing results to `vlm_output`.
+
+See `go2_simple_nav/README.md` for more details and configuration options.
 
 ## Architecture Details
 
@@ -269,6 +334,7 @@ I_CAN_Robot/
 ├── ican_bringup/      # Launch files
 ├── ican_description/  # URDF models
 ├── ican_gazebo/       # Simulation
+├── go2_simple_nav/    # Navigation, joystick, and vision-language nodes
 └── README.md          # This file
 ```
 
@@ -284,9 +350,12 @@ I_CAN_Robot/
 - LLM learns from tool descriptions
 - Wake word triggers listening
 
-**New Vision Feature:**
-- YOLO detections available at `/yolo_detections`
-- Integrate with LLM prompts for visual context
+**New Navigation or Vision-Language Feature:**
+- Use `go2_simple_nav` for joystick/WebRTC navigation (`joystick_goal_webrtc`) and vision-language inference (`qwen3_vl_node`).
+- Publish images to `/camera/image_raw` for VL/vision nodes.
+- Trigger Qwen3-VL by publishing `Bool` to `/trigger_capture`; results on `/vlm_output`.
+- YOLO detections available at `/yolo_detections`.
+- Integrate vision or navigation context with LLM prompts as needed.
 
 ## Troubleshooting
 
@@ -373,3 +442,64 @@ See individual package READMEs for development details.
 **Status:** ✅ Active Development
 
 For detailed package documentation, see individual package READMEs linked above.
+
+## Starting the Go2 Robot
+
+This section describes how to power on and connect to the Unitree Go2 robot, including controller and UWB setup, and configuring the SDK environment variables for ROS2 integration.
+
+### 1. Power On the Go2
+- Double press and hold the power button on the Go2 until you hear the startup sound and see the status lights.
+- Wait for the robot to finish its boot sequence.
+
+### 2. Start the Controller
+- Double press and hold to power on the Unitree controller (handheld remote).
+- Wait for it to connect to the robot (status icon should indicate connection).
+
+### 3. (Optional) Start the UWB Controller
+- If using the UWB (Ultra-Wideband) positioning system, press the power button on the UWB controller and ensure it is paired with the robot.
+- Follow Unitree's UWB pairing instructions if needed.
+
+### 4. Connect to the Robot (Ethernet or WiFi)
+- **Ethernet:**
+  - Connect your computer directly to the Go2's Ethernet port using a standard cable.
+  - Set your computer's IP to be on the same subnet as the robot (e.g., `192.168.123.10`).
+  - The default robot IP is usually `192.168.123.161` (check your Go2 docs or display).
+- **WiFi:**
+  - Connect your computer to the same WiFi network as the Go2.
+  - Find the robot's IP address from the application.
+
+### 5. Set Environment Variables for the Go2 SDK
+The unofficial Go2 SDK requires two environment variables to be set before running any SDK-based nodes:
+
+```bash
+export robot_ip=192.168.123.161   # Replace with your Go2's actual IP
+export conn_type=webrtc              # Use 'udp' for WiFi, 'eth' for Ethernet
+```
+- `robot_ip`: The IP address of the Go2 robot.
+- `conn_type`: Connection type. Use `webrtc` for webrtc, `cyclonedds` for cyclone dds.
+
+You can add these lines to your `~/.bashrc` or run them in each terminal before launching ROS2 nodes that use the Go2 SDK.
+
+### 6. Launch the Go2 Robot Software
+
+After setting the environment variables, launch the Go2 robot system using the provided launch file from the unofficial SDK:
+
+```bash
+# Example (adjust path as needed)
+ros2 launch go2_robot_sdk robot.launch.py \
+  rviz2:=true \
+  nav2:=true \
+  slam:=true \
+  foxglove:=true \
+  joystick:=true \
+  teleop:=true
+```
+
+**Parameters:**
+- `rviz2` (default: true): Launch RViz2 visualization
+- `nav2` (default: true): Launch Nav2 navigation stack
+- `slam` (default: true): Launch SLAM toolbox
+- `foxglove` (default: true): Launch Foxglove Bridge
+- `joystick` (default: true): Launch joystick node
+- `teleop` (default: true): Launch teleoperation node
+---
