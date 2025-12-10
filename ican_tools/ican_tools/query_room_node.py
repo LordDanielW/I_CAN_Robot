@@ -32,10 +32,10 @@ class QueryRoomNode(Node):
         self.latest_frame = None
         self.frame_available = False
         
-        # Subscribe to camera feed (from cam2image)
+        # Subscribe to camera feed (from camera nodes)
         self.image_sub = self.create_subscription(
             Image,
-            '/image',  # cam2image publishes to /image
+            '/camera/image_raw',  # Camera nodes publish to /camera/image_raw
             self.image_callback,
             10
         )
@@ -70,7 +70,7 @@ class QueryRoomNode(Node):
         )
         
         self.get_logger().info('Query Room services ready:')
-        self.get_logger().info('  - Subscriber: /image (camera)')
+        self.get_logger().info('  - Subscriber: /camera/image_raw (camera)')
         self.get_logger().info('  - Subscriber: /query_room/command')
         self.get_logger().info('  - Publisher: /llm_vision_query (to ollama)')
         self.get_logger().info('  - Publisher: /query_room/status, /tool_result')

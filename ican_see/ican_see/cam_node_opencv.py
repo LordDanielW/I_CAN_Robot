@@ -22,7 +22,7 @@ class OpenCVCameraNode(Node):
         self.declare_parameter('width', 1920)
         self.declare_parameter('height', 1080)
         self.declare_parameter('fps', 30)
-        self.declare_parameter('publish_rate', 5.0)  # Publish at 5Hz
+        self.declare_parameter('publish_rate', 2.0)  # Publish at 2Hz for vision queries
         self.declare_parameter('jpeg_quality', 80)
         self.declare_parameter('skip_frames', 6)  # Skip 5 frames, publish every 6th
         
@@ -54,7 +54,7 @@ class OpenCVCameraNode(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
         self.get_logger().info(f"OpenCV Camera Node initialized on device {self.device_id}")
-        self.get_logger().info(f"Publishing at {self.publish_rate} Hz (capturing at {self.fps} fps)")
+        self.get_logger().info(f"Publishing at {self.publish_rate} Hz (2 images/sec for vision queries)")
     
     def init_camera(self):
         """Initialize or reinitialize the camera"""

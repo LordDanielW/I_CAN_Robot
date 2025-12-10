@@ -25,7 +25,7 @@ class FFmpegCameraNode(Node):
         self.declare_parameter('width', 1920)
         self.declare_parameter('height', 1080)
         self.declare_parameter('fps', 30)
-        self.declare_parameter('publish_rate', 5.0)  # Publish at 5Hz
+        self.declare_parameter('publish_rate', 2.0)  # Publish at 2Hz for vision queries
         self.declare_parameter('input_format', 'v4l2')  # v4l2 for Linux
         
         # Get parameters
@@ -57,7 +57,7 @@ class FFmpegCameraNode(Node):
         self.timer = self.create_timer(timer_period, self.timer_callback)
         
         self.get_logger().info(f"FFmpeg Camera Node initialized on device {self.device_id}")
-        self.get_logger().info(f"Publishing at {self.publish_rate} Hz")
+        self.get_logger().info(f"Publishing at {self.publish_rate} Hz (2 images/sec for vision queries)")
     
     def init_ffmpeg(self):
         """Initialize FFmpeg capture subprocess"""

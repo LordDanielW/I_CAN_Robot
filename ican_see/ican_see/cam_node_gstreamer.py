@@ -23,7 +23,7 @@ class GStreamerCameraNode(Node):
         self.declare_parameter('fps', 30)
         self.declare_parameter('output_width', 1920)
         self.declare_parameter('output_height', 960)
-        self.declare_parameter('publish_rate', 10.0)
+        self.declare_parameter('publish_rate', 2.0)  # Publish at 2Hz for vision queries
         
         # Get parameters
         self.device_id = self.get_parameter('device_id').value
@@ -55,7 +55,7 @@ class GStreamerCameraNode(Node):
         
         self.get_logger().info(f"GStreamer Camera Node initialized on /dev/video{self.device_id}")
         self.get_logger().info(f"Capture: {self.width}x{self.height} @ {self.fps}fps")
-        self.get_logger().info(f"Output: {self.output_width}x{self.output_height} @ {self.publish_rate}Hz")
+        self.get_logger().info(f"Output: {self.output_width}x{self.output_height} @ {self.publish_rate}Hz (2 images/sec)")
     
     def init_camera(self):
         """Initialize camera with GStreamer pipeline"""
