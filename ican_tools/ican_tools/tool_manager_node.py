@@ -28,48 +28,17 @@ class ToolManagerNode(Node):
         
         # Tool registry: {tool_name: {topic, description, pattern, status}}
         self.tools = {
-            # Dice tools
-            'roll': {
-                'topic': '/dice/command',
-                'description': 'roll(dice_notation) - Roll dice using RPG notation (e.g., d20, 3d6+5, 2d10-2)',
-                'pattern': r'TOOL:roll\(([^)]+)\)',
-                'status': 'unknown'
-            },
-            'roll_stats': {
-                'topic': '/dice/command',
-                'description': 'roll_stats() - Generate RPG character ability scores (4d6 drop lowest, 6 times)',
-                'pattern': r'TOOL:roll_stats\(\)',
-                'status': 'unknown'
-            },
-            'coin_flip': {
-                'topic': '/dice/command',
-                'description': 'coin_flip(count) - Flip one or more coins (e.g., coin_flip(1), coin_flip(3))',
-                'pattern': r'TOOL:coin_flip\((\d+)\)',
-                'status': 'unknown'
-            },
-            'roll_history': {
-                'topic': '/dice/command',
-                'description': 'roll_history(limit) - Show recent dice roll history (e.g., roll_history(5))',
-                'pattern': r'TOOL:roll_history\((\d+)\)',
-                'status': 'unknown'
-            },
             # Movement tools
             'move_to_bathroom': {
                 'topic': '/move_robot/command',
-                'description': 'move_to_bathroom() - Move robot through door to bathroom (preprogrammed path)',
+                'description': 'move_to_bathroom() - Move robot through door to bathroom using go2_simple_nav',
                 'pattern': r'TOOL:move_to_bathroom\(\)',
                 'status': 'unknown'
             },
-            'move_through_door': {
+            'move_to_door': {
                 'topic': '/move_robot/command',
-                'description': 'move_through_door() - Navigate robot through a doorway',
-                'pattern': r'TOOL:move_through_door\(\)',
-                'status': 'unknown'
-            },
-            'stop_robot': {
-                'topic': '/move_robot/command',
-                'description': 'stop_robot() - Emergency stop for robot movement',
-                'pattern': r'TOOL:stop_robot\(\)',
+                'description': 'move_to_door() - Move robot to the door using go2_simple_nav',
+                'pattern': r'TOOL:move_to_door\(\)',
                 'status': 'unknown'
             },
             # Vision tools
@@ -94,7 +63,6 @@ class ToolManagerNode(Node):
         }
         
         # Publishers for tool commands
-        self.dice_command_pub = self.create_publisher(String, '/dice/command', 10)
         self.move_command_pub = self.create_publisher(String, '/move_robot/command', 10)
         self.query_room_pub = self.create_publisher(String, '/query_room/command', 10)
         
@@ -111,14 +79,6 @@ class ToolManagerNode(Node):
             Trigger,
             '/tools/list',
             self.handle_list_tools
-        )
-        
-        # Subscriber to check dice service status
-        self.dice_result_sub = self.create_subscription(
-            String,
-            '/dice/result',
-            self.dice_result_callback,
-            10
         )
         
         # Subscriber to check move robot status
@@ -154,9 +114,7 @@ class ToolManagerNode(Node):
         # In the future, this could ping service nodes
         for tool_name in self.tools:
             topic = self.tools[tool_name]['topic']
-            if '/dice/command' in topic:
-                self.tools[tool_name]['status'] = 'available'
-            elif '/move_robot/command' in topic:
+            if '/move_robot/command' in topic:
                 self.tools[tool_name]['status'] = 'available'
             elif '/query_room/command' in topic:
                 self.tools[tool_name]['status'] = 'available'
@@ -218,21 +176,10 @@ class ToolManagerNode(Node):
         self.get_logger().info(f'Executing: {tool_name}({params})')
         
         # Construct command based on tool
-        if tool_name == 'roll':
-            command = params  # dice notation
-        elif tool_name == 'roll_stats':
-            command = 'stats'
-        elif tool_name == 'coin_flip':
-            command = f'coin flip {params}'
-        elif tool_name == 'roll_history':
-            command = f'history {params}'
-        # Movement tools
-        elif tool_name == 'move_to_bathroom':
+        if tool_name == 'move_to_bathroom':
             command = 'bathroom'
-        elif tool_name == 'move_through_door':
+        elif tool_name == 'move_to_door':
             command = 'door'
-        elif tool_name == 'stop_robot':
-            command = 'stop'
         # Vision tools
         elif tool_name == 'describe_room':
             command = 'describe room'
@@ -248,19 +195,12 @@ class ToolManagerNode(Node):
         cmd_msg = String()
         cmd_msg.data = command
         
-        if '/dice/command' in topic:
-            self.dice_command_pub.publish(cmd_msg)
-            self.get_logger().info(f'→ Sent to dice service: "{command}"')
-        elif '/move_robot/command' in topic:
+        if '/move_robot/command' in topic:
             self.move_command_pub.publish(cmd_msg)
             self.get_logger().info(f'→ Sent to move robot: "{command}"')
         elif '/query_room/command' in topic:
             self.query_room_pub.publish(cmd_msg)
             self.get_logger().info(f'→ Sent to query room: "{command}"')
-    
-    def dice_result_callback(self, msg):
-        """Log dice results"""
-        self.get_logger().info(f'Dice result: {msg.data[:100]}...')
     
     def move_status_callback(self, msg):
         """Log movement status"""

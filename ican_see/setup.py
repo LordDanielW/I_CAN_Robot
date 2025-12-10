@@ -25,6 +25,10 @@ setup(
     entry_points={
         'console_scripts': [
             'yolo_server_node = ican_see.yolo_server_node:main',
+            'cam_node_opencv = ican_see.cam_node_opencv:main',
+            'cam_node_ffmpeg = ican_see.cam_node_ffmpeg:main',
+            'cam_node_robust = ican_see.cam_node_robust:main',
+            'cam_node_gstreamer = ican_see.cam_node_gstreamer:main',
         ],
     },
 )

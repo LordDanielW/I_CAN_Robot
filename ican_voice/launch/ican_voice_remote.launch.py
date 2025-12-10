@@ -16,9 +16,26 @@ def generate_launch_description():
             name='whisper_server',
             output='screen',
             parameters=[{
-                'model_size': 'base.en',
-                'device': 'cpu',
-                'compute_type': 'int8'
+                'model_size': 'large-v3-turbo',
+                'device': 'cuda',
+                'compute_type': 'float16',
+                'batch_size': 16,
+                'beam_size': 1
+            }]
+        ),
+        
+        # Kokoro TTS - Text-to-speech synthesis
+        Node(
+            package='ican_voice',
+            executable='tts_node',
+            name='tts_streamer',
+            output='screen',
+            parameters=[{
+                'voice': 'af_heart',
+                'lang_code': 'a',
+                'speed': 1.0,
+                'device': 'cuda',
+                'use_kokoro': True
             }]
         ),
     ])

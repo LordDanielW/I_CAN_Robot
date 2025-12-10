@@ -12,17 +12,22 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     return LaunchDescription([
-        # Camera node - publishes images at 5Hz
+        # Camera node - Robust FFmpeg-based (uses working MediaMTX parameters)
         Node(
-            package='image_tools',
-            executable='cam2image',
-            name='cam2image',
+            package='ican_see',
+            executable='cam_node_robust',
+            name='camera_node',
             parameters=[{
-                'frequency': 5.0,  # Publish at 5Hz
                 'device_id': 0,  # /dev/video0 (Insta360 X5)
+                'width': 2880,  # Native resolution
+                'height': 1440,
+                'output_width': 1920,  # Scaled output
+                'output_height': 960,
+                'fps': 10,
+                'publish_rate': 10.0,  # Publish at 10Hz
             }],
             remappings=[
-                ('image', '/camera/image_raw'),
+                ('camera/image_raw', '/camera/image_raw'),
             ],
             output='screen'
         ),

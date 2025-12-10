@@ -12,6 +12,7 @@ import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
 from std_srvs.srv import Trigger
+from geometry_msgs.msg import Point
 
 
 class MoveRobotNode(Node):
@@ -24,6 +25,13 @@ class MoveRobotNode(Node):
         # Movement state tracking
         self.is_moving = False
         self.current_destination = None
+        
+        # Publisher for navigation goals (to go2_simple_nav)
+        self.goal_pub = self.create_publisher(
+            Point,
+            '/goal',
+            10
+        )
         
         # Create subscriber for movement commands
         self.command_sub = self.create_subscription(
@@ -57,6 +65,7 @@ class MoveRobotNode(Node):
         self.get_logger().info('Move Robot services ready:')
         self.get_logger().info('  - Service: /move_robot/go')
         self.get_logger().info('  - Subscriber: /move_robot/command')
+        self.get_logger().info('  - Publisher: /goal (to go2_simple_nav)')
         self.get_logger().info('  - Publisher: /move_robot/status, /tool_result')
     
     def command_callback(self, msg):
@@ -91,13 +100,9 @@ class MoveRobotNode(Node):
         if 'bathroom' in command:
             return self.move_to_bathroom()
         elif 'door' in command:
-            return self.move_through_door()
-        elif 'stop' in command or 'halt' in command:
-            return self.stop_movement()
-        elif 'status' in command:
-            return self.get_movement_status()
+            return self.move_to_door()
         else:
-            return f"❌ Unknown movement command: '{command}'\nAvailable: bathroom, door, stop, status"
+            return f"❌ Unknown movement command: '{command}'\nAvailable: bathroom, door"
     
     def move_to_bathroom(self) -> str:
         """Execute preprogrammed movement to bathroom"""
@@ -109,52 +114,79 @@ class MoveRobotNode(Node):
         status_msg.data = "MOVING_TO_BATHROOM"
         self.status_pub.publish(status_msg)
         
-        self.get_logger().info('🚶 Executing preprogrammed path to bathroom...')
+        self.get_logger().info('🚶 Sending navigation goal to bathroom...')
         
-        # Simulate movement sequence
-        result = "🤖 Moving to bathroom (preprogrammed sequence):\n"
-        result += "   1. ✓ Rotate 45° left\n"
-        result += "   2. ✓ Move forward 2 meters\n"
-        result += "   3. ✓ Rotate 90° right\n"
-        result += "   4. ✓ Navigate through doorway\n"
-        result += "   5. ✓ Move forward 1.5 meters\n"
-        result += "   6. ✓ Arrived at bathroom entrance\n"
-        result += "\n✓ Movement complete. Robot is now at the bathroom."
+        # Send goal to go2_simple_nav using coordinates from send_goal_once.py
+        goal = Point()
+        goal.x = 1.440033
+        goal.y = -1.425135
+        goal.z = 0.382595
+        
+        self.goal_pub.publish(goal)
+        
+        result = "🤖 Navigation goal sent to go2_simple_nav:\n"
+        result += f"   Target: Bathroom\n"
+        result += f"   Coordinates: ({goal.x:.3f}, {goal.y:.3f}, {goal.z:.3f})\n"
+        result += "   go2_simple_nav will handle the navigation\n"
+        result += "\n✓ Goal published to /goal topic"
         
         # Update status
         self.is_moving = False
         self.current_destination = None
         
-        status_msg.data = "ARRIVED_BATHROOM"
+        status_msg.data = "GOAL_SENT"
         self.status_pub.publish(status_msg)
         
         return result
     
-    def move_through_door(self) -> str:
-        """Execute door navigation"""
+    def move_to_door(self) -> str:
+        """Execute preprogrammed movement to door"""
         self.is_moving = True
+        self.current_destination = "door"
         
-        self.get_logger().info('🚪 Navigating through door...')
+        # Publish status
+        status_msg = String()
+        status_msg.data = "MOVING_TO_DOOR"
+        self.status_pub.publish(status_msg)
         
-        result = "🚪 Navigating through door:\n"
-        result += "   1. ✓ Detect door frame\n"
-        result += "   2. ✓ Align with doorway\n"
-        result += "   3. ✓ Move through carefully\n"
-        result += "   4. ✓ Clear of doorway\n"
-        result += "\n✓ Successfully passed through door."
+        self.get_logger().info('🍳 Sending navigation goal to door...')
         
+        # Send goal to go2_simple_nav with door coordinates
+        goal = Point()
+        goal.x = 2.5
+        goal.y = 1.0
+        goal.z = 0.0
+        
+        self.goal_pub.publish(goal)
+        
+        result = "🤖 Navigation goal sent to go2_simple_nav:\n"
+        result += f"   Target: door\n"
+        result += f"   Coordinates: ({goal.x:.3f}, {goal.y:.3f}, {goal.z:.3f})\n"
+        result += "   go2_simple_nav will handle the navigation\n"
+        result += "\n✓ Goal published to /goal topic"
+        
+        # Update status
         self.is_moving = False
+        self.current_destination = None
+        
+        status_msg.data = "GOAL_SENT"
+        self.status_pub.publish(status_msg)
+        
         return result
     
     def stop_movement(self) -> str:
-        """Stop current movement"""
-        if not self.is_moving:
-            return "ℹ️ Robot is not currently moving."
+        """Stop current movement by sending current position as goal"""
+        self.get_logger().warn('⛔ Stop requested - sending zero velocity goal')
         
-        self.get_logger().warn('⛔ Emergency stop requested!')
+        # Send current position (0,0) as goal to stop
+        goal = Point()
+        goal.x = 0.0
+        goal.y = 0.0
+        goal.z = 0.0
+        
+        self.goal_pub.publish(goal)
         
         self.is_moving = False
-        prev_destination = self.current_destination
         self.current_destination = None
         
         # Publish stop status
@@ -162,14 +194,7 @@ class MoveRobotNode(Node):
         status_msg.data = "STOPPED"
         self.status_pub.publish(status_msg)
         
-        return f"⛔ Robot movement stopped. Previous destination: {prev_destination}"
-    
-    def get_movement_status(self) -> str:
-        """Get current movement status"""
-        if self.is_moving:
-            return f"📍 Status: Moving to {self.current_destination}"
-        else:
-            return "📍 Status: Robot is stationary and ready for commands"
+        return "⛔ Stop command sent to go2_simple_nav (goal at origin)"
 
 
 def main(args=None):

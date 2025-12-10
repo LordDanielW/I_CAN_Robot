@@ -22,6 +22,8 @@ class DebugMonitor(Node):
         self.create_subscription(String, '/dice/command', self.dice_cmd_callback, 10)
         self.create_subscription(String, '/dice/result', self.dice_result_callback, 10)
         self.create_subscription(String, '/prompt_status', self.status_callback, 10)
+        self.create_subscription(String, '/tts/speak', self.tts_callback, 10)
+        self.create_subscription(String, '/llm_vision_query', self.vision_query_callback, 10)
         
         self.get_logger().info('='*80)
         self.get_logger().info('DEBUG MONITOR STARTED - Showing full messages')
@@ -47,6 +49,12 @@ class DebugMonitor(Node):
     
     def status_callback(self, msg):
         self.print_message('STATUS', msg.data)
+    
+    def tts_callback(self, msg):
+        self.print_message('TTS SPEAK', msg.data)
+    
+    def vision_query_callback(self, msg):
+        self.print_message('VISION QUERY', msg.data)
     
     def print_message(self, topic_name, content):
         """Print full message with formatting"""

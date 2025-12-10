@@ -68,11 +68,24 @@ class OllamaToolNode(Node):
         for attempt in range(max_retries):
             try:
                 # Test connection to Ollama
-                models = ollama.list()
+                models_response = ollama.list()
                 self.get_logger().info(f'✓ Ollama is running')
                 
                 # Check if our model is available
-                model_names = [m['name'] for m in models.get('models', [])]
+                # Handle both dict response with 'models' key or list response
+                if isinstance(models_response, dict) and 'models' in models_response:
+                    models_list = models_response['models']
+                else:
+                    models_list = models_response if isinstance(models_response, list) else []
+                
+                # Extract model names - handle both 'name' and 'model' keys
+                model_names = []
+                for m in models_list:
+                    if isinstance(m, dict):
+                        model_names.append(m.get('name') or m.get('model', ''))
+                    elif isinstance(m, str):
+                        model_names.append(m)
+                
                 if self.model in model_names:
                     self.get_logger().info(f'✓ Model {self.model} is available')
                     return
