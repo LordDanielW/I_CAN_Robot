@@ -1,3 +1,6 @@
 [submodule "go2_ros2_sdk"]
 	path = go2_ros2_sdk
 	url = https://github.com/abizovnuralem/go2_ros2_sdk
+[submodule "unitree-go2-ros2"]
+	path = unitree-go2-ros2
+	url = https://github.com/anujjain-dev/unitree-go2-ros2.git

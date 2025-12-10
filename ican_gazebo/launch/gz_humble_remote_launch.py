@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-Gazebo Humble Remote Launch - Digital Twin with Visualizers
-Runs digital twin in Ignition Gazebo (empty world) with RViz, Foxglove, and rqt_graph.
-Does NOT connect to physical robot.
+Gazebo Humble Remote Launch - Full Simulation with Indoor Environment
+Runs complete simulation of Unitree Go2 in indoor building/room environment.
+Simulates all joints, physics, and responds to cmd_vel commands.
+Does NOT connect to physical robot - pure simulation.
 
 Uses Ignition Gazebo (ros_gz_sim) compatible with ROS 2 Humble.
-Based on go2_ros2_sdk robot.launch.py
 """
 
 import os
@@ -32,14 +32,13 @@ class RemoteConfig:
         # Config paths
         self.urdf_path = os.path.join(self.go2_sdk_dir, 'urdf', 'go2.urdf')
         self.rviz_config = os.path.join(self.go2_sdk_dir, 'config', 'single_go2.rviz')
-        # Note: Using .sdf world for Ignition Gazebo instead of .world
-        self.world_path = os.path.join(self.ican_gazebo_dir, 'worlds', 'empty.sdf')
         
         # Check for optional packages
         self.has_foxglove = self._check_package('foxglove_bridge')
         
-        print(f"🌐 Remote Digital Twin Configuration:")
-        print(f"   World: {self.world_path}")
+        print(f"🏢 Full Simulation Configuration:")
+        print(f"   World: Indoor building environment")
+        print(f"   Physics: Full joint simulation + cmd_vel control")
         print(f"   RViz Config: {self.rviz_config}")
         if not self.has_foxglove:
             print(f"   ⚠️  Foxglove Bridge not available (optional)")
@@ -120,16 +119,18 @@ def generate_launch_description():
         ),
         
         # Launch Ignition Gazebo with empty world
+        # Launch Ignition Gazebo with indoor building world
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
                 os.path.join(get_package_share_directory('ros_gz_sim'), 
                            'launch', 'gz_sim.launch.py')
             ]),
             launch_arguments={
-                'gz_args': ['-r -v 4 empty.sdf'],  # Start unpaused with empty world
+                # Use default_world.sdf or office.sdf for indoor environment
+                # Available worlds: default_world.sdf, office.sdf, shapes.sdf
+                'gz_args': ['-r -v 4 /usr/share/gz/gz-sim8/worlds/default.sdf'],
             }.items(),
         ),
-        
         # Spawn robot in Ignition Gazebo
         Node(
             package='ros_gz_sim',
@@ -144,9 +145,7 @@ def generate_launch_description():
                 '-z', world_init_z,
                 '-Y', world_init_heading,
             ],
-        ),
-        
-        # Bridge ROS 2 topics to Ignition Gazebo
+        # Bridge ROS 2 topics to Ignition Gazebo for full simulation
         Node(
             package='ros_gz_bridge',
             executable='parameter_bridge',
@@ -154,13 +153,29 @@ def generate_launch_description():
             output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
             arguments=[
-                # Gazebo to ROS
+                # Gazebo to ROS - simulation outputs
                 '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
                 '/model/go2/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry',
-                '/world/empty/model/go2/joint_state@sensor_msgs/msg/JointState@gz.msgs.Model',
+                '/model/go2/joint_state@sensor_msgs/msg/JointState@gz.msgs.Model',
+                '/model/go2/tf@tf2_msgs/msg/TFMessage@gz.msgs.Pose_V',
                 
-                # ROS to Gazebo
+                # ROS to Gazebo - control inputs
                 '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
+            ],
+            remappings=[
+                ('/model/go2/odometry', '/odom'),
+                ('/model/go2/joint_state', '/joint_states'),
+            ],
+        ),
+        
+        # Simulated Robot Controller - converts cmd_vel to joint commands
+        Node(
+            package='controller_manager',
+            executable='ros2_control_node',
+            name='controller_manager',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+        ),      '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
             ],
         ),
         
@@ -180,23 +195,7 @@ def generate_launch_description():
             executable='foxglove_bridge',
             name='foxglove_bridge',
             output='screen',
-            parameters=[{
-                'port': 8765,
-                'address': '0.0.0.0',
-                'send_buffer_limit': 100000000,
-                'use_sim_time': use_sim_time,
-            }],
-            condition=IfCondition(enable_foxglove),
-        ),
-        
-        # rqt_graph - Node/topic visualization
-        ExecuteProcess(
-            cmd=['rqt_graph'],
-            output='screen',
-            name='rqt_graph',
-        ),
-        
-        # TF Static Transforms
+        # TF Static Transform (map frame)
         Node(
             package='tf2_ros',
             executable='static_transform_publisher',
@@ -221,16 +220,27 @@ def generate_launch_description():
             parameters=[{'use_sim_time': use_sim_time}],
         ),
         
-        # # Simulated sensors (placeholder for camera/lidar)
-        # Node(
-        #     package='image_transport',
-        #     executable='republish',
-        #     name='sim_camera_republisher',
-        #     arguments=['raw', 'compressed'],
-        #     remappings=[
-        #         ('in', 'camera/image_raw'),
-        #         ('out/compressed', 'camera/compressed'),
-        #     ],
-        #     parameters=[{'use_sim_time': use_sim_time}],
-        # ),
+        # Simulated Camera (if available in model)
+        Node(
+            package='ros_gz_bridge',
+            executable='parameter_bridge',
+            name='gz_bridge_camera',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+            arguments=[
+                '/camera@sensor_msgs/msg/Image@gz.msgs.Image',
+            ],
+        ),
+        
+        # Simulated LiDAR (if available in model)
+        Node(
+            package='ros_gz_bridge',
+            executable='parameter_bridge',
+            name='gz_bridge_lidar',
+            output='screen',
+            parameters=[{'use_sim_time': use_sim_time}],
+            arguments=[
+                '/lidar@sensor_msgs/msg/LaserScan@gz.msgs.LaserScan',
+            ],
+        ),
     ])
