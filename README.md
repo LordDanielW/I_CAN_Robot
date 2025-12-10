@@ -503,3 +503,24 @@ ros2 launch go2_robot_sdk robot.launch.py \
 - `foxglove` (default: true): Launch Foxglove Bridge
 - `joystick` (default: true): Launch joystick node
 - `teleop` (default: true): Launch teleoperation node
+
+## Submodules
+
+### go2_ros2_sdk
+This repository includes the [go2_ros2_sdk](https://github.com/abizovnuralem/go2_ros2_sdk) as a git submodule in the `go2_ros2_sdk` directory. This SDK provides ROS2 integration and drivers for the Unitree Go2 robot, including:
+- High-level control nodes and message definitions
+- WebRTC and Ethernet communication support
+- Example launch files and configuration for Go2
+
+#### Initializing/Updating Submodules
+If you clone this repository, make sure to initialize and update submodules:
+```bash
+git submodule update --init --recursive
+```
+
+#### Building the SDK
+Refer to the SDK's own README for build and usage instructions. Typical usage involves building with colcon:
+```bash
+cd go2_ros2_sdk
+colcon build --symlink-install
+```

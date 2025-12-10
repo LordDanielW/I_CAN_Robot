@@ -1,0 +1,3 @@
+[submodule "go2_ros2_sdk"]
+	path = go2_ros2_sdk
+	url = https://github.com/abizovnuralem/go2_ros2_sdk
