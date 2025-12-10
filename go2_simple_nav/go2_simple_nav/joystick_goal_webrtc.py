@@ -53,15 +53,23 @@ class JoystickGoalWebRTC(Node):
         self.declare_parameter('goal_y', 0.0)
         self.declare_parameter('goal_tolerance', 0.25)
         self.declare_parameter('max_speed', 0.5)
-        self.declare_parameter('max_turn', 0.6)
+        self.declare_parameter('max_turn', 1.5)
         self.declare_parameter('rate', 10.0)
         self.declare_parameter('robot_id', '0')
         self.declare_parameter('obstacle_avoidance', True)
         self.declare_parameter('auto_enable_oa', True)
         self.declare_parameter('webrtc_priority', 1)
         self.declare_parameter('repulsion_radius', 0.7)
-        self.declare_parameter('repulsion_scale', 0.7)
-        self.declare_parameter('attraction_scale', 4.0)  # Increase to prioritize goal more
+        self.declare_parameter('repulsion_scale', 1.5)
+        self.declare_parameter('attraction_scale', 1.0)  # Increase to prioritize goal more
+        # Narrow-passage tuning: when the robot detects close walls on both sides
+        # but forward space is relatively clear, reduce lateral repulsion and
+        # slow down to pass through doorways without oscillation.
+        self.declare_parameter('enable_narrow_passage_mode', True)
+        self.declare_parameter('narrow_side_threshold', 0.35)
+        self.declare_parameter('narrow_front_threshold', 0.6)
+        self.declare_parameter('narrow_repulsion_scale_factor', 0.25)
+        self.declare_parameter('narrow_max_speed', 0.2)
 
         self.goal_x = float(self.get_parameter('goal_x').get_parameter_value().double_value)
         self.goal_y = float(self.get_parameter('goal_y').get_parameter_value().double_value)
@@ -76,6 +84,11 @@ class JoystickGoalWebRTC(Node):
         self.repulsion_radius = float(self.get_parameter('repulsion_radius').get_parameter_value().double_value)
         self.repulsion_scale = float(self.get_parameter('repulsion_scale').get_parameter_value().double_value)
         self.attraction_scale = float(self.get_parameter('attraction_scale').get_parameter_value().double_value)
+        self.enable_narrow_passage_mode = bool(self.get_parameter('enable_narrow_passage_mode').get_parameter_value().bool_value)
+        self.narrow_side_threshold = float(self.get_parameter('narrow_side_threshold').get_parameter_value().double_value)
+        self.narrow_front_threshold = float(self.get_parameter('narrow_front_threshold').get_parameter_value().double_value)
+        self.narrow_repulsion_scale_factor = float(self.get_parameter('narrow_repulsion_scale_factor').get_parameter_value().double_value)
+        self.narrow_max_speed = float(self.get_parameter('narrow_max_speed').get_parameter_value().double_value)
 
         self.pose: Optional[tuple] = None
         self.scan: Optional[LaserScan] = None
@@ -242,10 +255,36 @@ class JoystickGoalWebRTC(Node):
                 rep_x -= strength * math.cos(angle)
                 rep_y -= strength * math.sin(angle)
 
+        # Narrow-passage detection: examine simple sectors (left, right, front)
+        narrow_mode = False
+        if self.enable_narrow_passage_mode and scan is not None:
+            def sector_min(a_min, a_max):
+                # clamp angles and find index range
+                i_min = int(max(0, math.floor((a_min - scan.angle_min) / scan.angle_increment)))
+                i_max = int(min(len(scan.ranges) - 1, math.ceil((a_max - scan.angle_min) / scan.angle_increment)))
+                vals = [r for r in scan.ranges[i_min:i_max+1] if r > scan.range_min]
+                return min(vals) if vals else float('inf')
+
+            # angles in radians
+            front_min = sector_min(-math.radians(15), math.radians(15))
+            left_min = sector_min(math.radians(30), math.radians(90))
+            right_min = sector_min(-math.radians(90), -math.radians(30))
+
+            if left_min < self.narrow_side_threshold and right_min < self.narrow_side_threshold and front_min > self.narrow_front_threshold:
+                narrow_mode = True
+
+        # If in narrow mode, reduce lateral repulsion influence and slow forward speed
+        if narrow_mode:
+            rep_x *= self.narrow_repulsion_scale_factor
+            rep_y *= self.narrow_repulsion_scale_factor
+            local_max_speed = min(self.max_speed, self.narrow_max_speed)
+        else:
+            local_max_speed = self.max_speed
+
         # Combine vectors
         vec_x = att_x + rep_x
         vec_y = att_y + rep_y
-        v = clamp(self.max_speed * vec_x, -self.max_speed, self.max_speed)
+        v = clamp(local_max_speed * vec_x, -local_max_speed, local_max_speed)
         w = clamp(self.max_turn * vec_y, -self.max_turn, self.max_turn)
 
         # Prepare WebRtcReq using gen_mov_command to ensure canonical structure
