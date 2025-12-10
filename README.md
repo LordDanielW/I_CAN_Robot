@@ -72,7 +72,7 @@ ros2 launch ican_bringup local_nodes.launch.py
 - **OS:** Ubuntu 24.04 LTS
 - **ROS2:** Jazzy Jalisco
 - **Python:** 3.12 (system Python, not venv)
-- **LLM:** Ollama with qwen2.5:7b model
+- **LLM:** Ollama with Qwen3-VL:8B model
 
 ### Hardware
 - **Microphone:** Any USB/3.5mm microphone
@@ -97,7 +97,7 @@ sudo apt install -y \
 ### Ollama (LLM Engine)
 ```bash
 curl -fsSL https://ollama.com/install.sh | sh
-ollama pull qwen2.5:7b
+ollama pull qwen3-vl:8b
 ```
 
 ### Python Packages
@@ -158,12 +158,12 @@ ros2 launch go2_simple_nav joystick_goal_webrtc.launch.py
 ```
 This node allows remote goal setting via joystick or web interface, sending high-level navigation commands to the Go2 robot.
 
-### Vision-Language Inference (Qwen3-VL)
+### Vision-Language Inference (Qwen3-VL:8B)
 ```bash
 # Start vision-language node
 ros2 launch go2_simple_nav qwen3_vl.launch.py
 ```
-Trigger the node by publishing to the `trigger_capture` topic. The node will capture an image and run Qwen3-VL inference, publishing results to `vlm_output`.
+Trigger the node by publishing to the `trigger_capture` topic. The node will capture an image and run Qwen3-VL:8B inference, publishing results to `vlm_output`.
 
 ```bash
 # Test script for publishing a simple image feed
@@ -202,9 +202,9 @@ ros2 topic echo /yolo_detections
 | `/tool_result` | String | Tool execution results |
 | `/yolo_detections` | Detection2DArray | Object detections from YOLO |
 | `/robot_speech` | String | Text for TTS to speak |
-| `/vlm_output` | String | Vision-language model output from Qwen3-VL node |
+| `/vlm_output` | String | Vision-language model output from Qwen3-VL:8B node |
 | `/camera/image_raw` | sensor_msgs/Image | Raw webcam images for VL/vision nodes |
-| `/trigger_capture` | Bool | Triggers Qwen3-VL node to process an image |
+| `/trigger_capture` | Bool | Triggers Qwen3-VL:8B node to process an image |
 
 ## Configuration
 
@@ -230,7 +230,7 @@ ros2 run ican_voice whisper_server_node --ros-args -p model_size:=tiny.en
 ```
 
 ### LLM Model
-Default: **qwen2.5:7b**
+Default: **qwen3-vl:8b**
 
 Change model:
 ```bash
@@ -260,13 +260,13 @@ ros2 launch go2_simple_nav joystick_goal_webrtc.launch.py
 
 ### Vision-Language Model (VLM/LLM)
 
-The vision-language model (VLM) is handled by the same LLM system (Qwen3-VL) used for language tasks. The `qwen3_vl_node` enables multimodal (image+text) inference, allowing the robot to interpret visual scenes and answer questions about its environment.
+The vision-language model (VLM) is handled by the same LLM system (Qwen3-VL:8B) used for language tasks. The `qwen3_vl_node` enables multimodal (image+text) inference, allowing the robot to interpret visual scenes and answer questions about its environment.
 
-- **qwen3_vl_node**: Node for Qwen3-VL inference (image+text via LLM)
+- **qwen3_vl_node**: Node for Qwen3-VL:8B inference (image+text via LLM)
 
 #### Launch Files
 
-- `qwen3_vl.launch.py`: Launches the Qwen3-VL node for vision-language inference.
+- `qwen3_vl.launch.py`: Launches the Qwen3-VL:8B node for vision-language inference.
 
 #### Example Usage
 
@@ -275,7 +275,7 @@ The vision-language model (VLM) is handled by the same LLM system (Qwen3-VL) use
 ros2 launch go2_simple_nav qwen3_vl.launch.py
 ```
 
-Trigger the node by publishing to the `trigger_capture` topic. The node will capture an image and run Qwen3-VL inference, publishing results to `vlm_output`.
+Trigger the node by publishing to the `trigger_capture` topic. The node will capture an image and run Qwen3-VL:8B inference, publishing results to `vlm_output`.
 
 See `go2_simple_nav/README.md` for more details and configuration options.
 
@@ -351,9 +351,9 @@ I_CAN_Robot/
 - Wake word triggers listening
 
 **New Navigation or Vision-Language Feature:**
-- Use `go2_simple_nav` for joystick/WebRTC navigation (`joystick_goal_webrtc`) and vision-language inference (`qwen3_vl_node`).
+- Use `go2_simple_nav` for joystick/WebRTC navigation (`joystick_goal_webrtc`) and vision-language inference (`qwen3_vl_node`, Qwen3-VL:8B).
 - Publish images to `/camera/image_raw` for VL/vision nodes.
-- Trigger Qwen3-VL by publishing `Bool` to `/trigger_capture`; results on `/vlm_output`.
+- Trigger Qwen3-VL:8B by publishing `Bool` to `/trigger_capture`; results on `/vlm_output`.
 - YOLO detections available at `/yolo_detections`.
 - Integrate vision or navigation context with LLM prompts as needed.
 
@@ -376,7 +376,7 @@ pgrep ollama
 ollama list
 
 # Test manually
-ollama run qwen2.5:7b "Hello"
+ollama run qwen3-vl:8b "Hello"
 ```
 
 ### YOLO Not Detecting
@@ -421,7 +421,7 @@ rqt_graph
 ### External
 - **ROS2 Jazzy:** https://docs.ros.org/en/jazzy/
 - **Ollama:** https://ollama.com/
-- **Qwen 2.5:** https://ollama.com/library/qwen2.5
+- **Qwen3-VL:8B:** https://ollama.com/library/qwen3-vl
 - **YOLOv8:** https://github.com/ultralytics/ultralytics
 - **Whisper:** https://github.com/openai/whisper
 
@@ -473,7 +473,7 @@ The unofficial Go2 SDK requires two environment variables to be set before runni
 
 ```bash
 export robot_ip=192.168.123.161   # Replace with your Go2's actual IP
-export conn_type=webrtc              # Use 'udp' for WiFi, 'eth' for Ethernet
+export conn_type=webrtc
 ```
 - `robot_ip`: The IP address of the Go2 robot.
 - `conn_type`: Connection type. Use `webrtc` for webrtc, `cyclonedds` for cyclone dds.
@@ -502,4 +502,3 @@ ros2 launch go2_robot_sdk robot.launch.py \
 - `foxglove` (default: true): Launch Foxglove Bridge
 - `joystick` (default: true): Launch joystick node
 - `teleop` (default: true): Launch teleoperation node
----
