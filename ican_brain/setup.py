@@ -32,7 +32,8 @@ setup(
         'console_scripts': [
             'prompt_node = ican_brain.prompt_node:main',
             'ollama_node = ican_brain.ollama_node:main',
-            'debug_monitor = ican_brain.debug_monitor:main',            
+            'debug_monitor = ican_brain.debug_monitor:main',
+            'test_ollama_node = ican_brain.test_ollama_node:main',
         ],
     },
 )

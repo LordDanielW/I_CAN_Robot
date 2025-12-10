@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
 Gazebo Humble Remote Launch - Digital Twin with Visualizers
-Runs digital twin in Gazebo (empty world) with RViz, Foxglove, and rqt_graph.
+Runs digital twin in Ignition Gazebo (empty world) with RViz, Foxglove, and rqt_graph.
 Does NOT connect to physical robot.
 
+Uses Ignition Gazebo (ros_gz_sim) compatible with ROS 2 Humble.
 Based on go2_ros2_sdk robot.launch.py
 """
 
@@ -16,6 +17,8 @@ from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.parameter_descriptions import ParameterValue
+from launch.conditions import IfCondition
+from ament_index_python.packages import PackageNotFoundError
 
 
 class RemoteConfig:
@@ -29,11 +32,25 @@ class RemoteConfig:
         # Config paths
         self.urdf_path = os.path.join(self.go2_sdk_dir, 'urdf', 'go2.urdf')
         self.rviz_config = os.path.join(self.go2_sdk_dir, 'config', 'single_go2.rviz')
-        self.world_path = os.path.join(self.ican_gazebo_dir, 'worlds', 'empty.world')
+        # Note: Using .sdf world for Ignition Gazebo instead of .world
+        self.world_path = os.path.join(self.ican_gazebo_dir, 'worlds', 'empty.sdf')
+        
+        # Check for optional packages
+        self.has_foxglove = self._check_package('foxglove_bridge')
         
         print(f"🌐 Remote Digital Twin Configuration:")
         print(f"   World: {self.world_path}")
         print(f"   RViz Config: {self.rviz_config}")
+        if not self.has_foxglove:
+            print(f"   ⚠️  Foxglove Bridge not available (optional)")
+    
+    def _check_package(self, package_name: str) -> bool:
+        """Check if a package is available"""
+        try:
+            get_package_share_directory(package_name)
+            return True
+        except PackageNotFoundError:
+            return False
     
     def load_urdf(self) -> str:
         """Load URDF file content"""
@@ -48,6 +65,7 @@ def generate_launch_description():
     
     # Launch arguments
     use_sim_time = LaunchConfiguration('use_sim_time', default='true')
+    enable_foxglove = LaunchConfiguration('enable_foxglove', default=str(config.has_foxglove).lower())
     world_init_x = LaunchConfiguration('world_init_x', default='0.0')
     world_init_y = LaunchConfiguration('world_init_y', default='0.0')
     world_init_z = LaunchConfiguration('world_init_z', default='0.5')
@@ -59,6 +77,11 @@ def generate_launch_description():
             'use_sim_time',
             default_value='true',
             description='Use simulation time'
+        ),
+        DeclareLaunchArgument(
+            'enable_foxglove',
+            default_value=str(config.has_foxglove).lower(),
+            description='Enable Foxglove Bridge (if available)'
         ),
         DeclareLaunchArgument(
             'world_init_x',
@@ -96,27 +119,25 @@ def generate_launch_description():
             }],
         ),
         
-        # Launch Gazebo with empty world
+        # Launch Ignition Gazebo with empty world
         IncludeLaunchDescription(
             PythonLaunchDescriptionSource([
-                os.path.join(get_package_share_directory('gazebo_ros'), 
-                           'launch', 'gazebo.launch.py')
+                os.path.join(get_package_share_directory('ros_gz_sim'), 
+                           'launch', 'gz_sim.launch.py')
             ]),
             launch_arguments={
-                'world': config.world_path,
-                'verbose': 'true',
-                'pause': 'false',
+                'gz_args': ['-r -v 4 empty.sdf'],  # Start unpaused with empty world
             }.items(),
         ),
         
-        # Spawn robot in Gazebo
+        # Spawn robot in Ignition Gazebo
         Node(
-            package='gazebo_ros',
-            executable='spawn_entity.py',
+            package='ros_gz_sim',
+            executable='create',
             name='spawn_go2',
             output='screen',
             arguments=[
-                '-entity', 'go2',
+                '-name', 'go2',
                 '-topic', 'robot_description',
                 '-x', world_init_x,
                 '-y', world_init_y,
@@ -125,12 +146,22 @@ def generate_launch_description():
             ],
         ),
         
-        # Joint State Publisher (for simulation)
+        # Bridge ROS 2 topics to Ignition Gazebo
         Node(
-            package='joint_state_publisher',
-            executable='joint_state_publisher',
-            name='joint_state_publisher',
+            package='ros_gz_bridge',
+            executable='parameter_bridge',
+            name='gz_bridge',
+            output='screen',
             parameters=[{'use_sim_time': use_sim_time}],
+            arguments=[
+                # Gazebo to ROS
+                '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
+                '/model/go2/odometry@nav_msgs/msg/Odometry@gz.msgs.Odometry',
+                '/world/empty/model/go2/joint_state@sensor_msgs/msg/JointState@gz.msgs.Model',
+                
+                # ROS to Gazebo
+                '/cmd_vel@geometry_msgs/msg/Twist]gz.msgs.Twist',
+            ],
         ),
         
         # RViz2 - Main visualization
@@ -143,7 +174,7 @@ def generate_launch_description():
             parameters=[{'use_sim_time': use_sim_time}],
         ),
         
-        # Foxglove Bridge - Web-based visualization
+        # Foxglove Bridge - Web-based visualization (optional)
         Node(
             package='foxglove_bridge',
             executable='foxglove_bridge',
@@ -155,6 +186,7 @@ def generate_launch_description():
                 'send_buffer_limit': 100000000,
                 'use_sim_time': use_sim_time,
             }],
+            condition=IfCondition(enable_foxglove),
         ),
         
         # rqt_graph - Node/topic visualization
@@ -189,16 +221,16 @@ def generate_launch_description():
             parameters=[{'use_sim_time': use_sim_time}],
         ),
         
-        # Simulated sensors (placeholder for camera/lidar)
-        Node(
-            package='image_transport',
-            executable='republish',
-            name='sim_camera_republisher',
-            arguments=['raw', 'compressed'],
-            remappings=[
-                ('in', 'camera/image_raw'),
-                ('out/compressed', 'camera/compressed'),
-            ],
-            parameters=[{'use_sim_time': use_sim_time}],
-        ),
+        # # Simulated sensors (placeholder for camera/lidar)
+        # Node(
+        #     package='image_transport',
+        #     executable='republish',
+        #     name='sim_camera_republisher',
+        #     arguments=['raw', 'compressed'],
+        #     remappings=[
+        #         ('in', 'camera/image_raw'),
+        #         ('out/compressed', 'camera/compressed'),
+        #     ],
+        #     parameters=[{'use_sim_time': use_sim_time}],
+        # ),
     ])

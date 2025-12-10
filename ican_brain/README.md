@@ -82,7 +82,7 @@ Ollama LLM with ROS2-based tool calling (no MCP stdio).
 
 **Functionality:**
 - Receives prompts from prompt_node
-- Uses Ollama (qwen2.5:7b) for inference
+- Uses Ollama (qwen3 vl:8b) for inference
 - Detects dice roll queries automatically
 - Calls dice service via ROS2 topics
 - Returns natural language responses
@@ -96,12 +96,12 @@ Ollama LLM with ROS2-based tool calling (no MCP stdio).
 **Parameters:**
 ```bash
 ros2 run ican_brain ollama_tool_node --ros-args \
-  -p llm_model:='qwen2.5:7b'
+  -p llm_model:='qwen3 vl:8b'
 ```
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `llm_model` | string | `qwen2.5:7b` | Ollama model to use |
+| `llm_model` | string | `qwen3 vl:8b` | Ollama model to use |
 
 **Tool Detection:**
 Automatically detects queries containing:

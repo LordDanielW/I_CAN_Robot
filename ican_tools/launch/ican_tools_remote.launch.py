@@ -17,13 +17,13 @@ def generate_launch_description():
             output='screen'
         ),
         
-        # Dice Service - Example tool for RPG dice rolling
-        Node(
-            package='ican_tools',
-            executable='dice_service_node',
-            name='dice_service_node',
-            output='screen'
-        ),
+        # # Dice Service - Example tool for RPG dice rolling
+        # Node(
+        #     package='ican_tools',
+        #     executable='dice_service_node',
+        #     name='dice_service_node',
+        #     output='screen'
+        # ),
         
         # Move Robot - Preprogrammed movement paths
         Node(
