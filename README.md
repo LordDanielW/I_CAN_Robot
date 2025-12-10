@@ -436,6 +436,7 @@ See individual package READMEs for development details.
 ## Authors
 
 - LordDanielW - [GitHub](https://github.com/LordDanielW)
+- Blaine Oania - [GitHub](https://github.com/BlaineKTMO)
 
 ---
 
